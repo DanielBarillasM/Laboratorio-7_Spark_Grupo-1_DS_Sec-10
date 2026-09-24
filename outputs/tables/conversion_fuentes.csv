@@ -1,0 +1,6 @@
+periodo_archivo,archivo_origen,registros,esperados,estado
+2025T1,Personas_ENEIC_I_2025.xlsx,51588,51588,Parquet reutilizado
+2025T2,Personas_ENEIC_II_2025.xlsx,51167,51167,Parquet reutilizado
+2025T3,Personas_ENEIC_III_2025.xlsx,51583,51583,Parquet reutilizado
+2025T4,Personas_ENEIC_IV_2025.xlsx,49338,49338,Parquet reutilizado
+2026T1,Personas_ENEIC_I_2026.xlsx,49843,49843,Parquet reutilizado

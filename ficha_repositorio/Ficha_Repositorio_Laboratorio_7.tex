@@ -1,0 +1,123 @@
+\documentclass[11pt,letterpaper]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage{geometry}
+\usepackage{xcolor}
+\usepackage{tabularx}
+\usepackage{array}
+\usepackage{booktabs}
+
+\geometry{margin=2.25cm,headheight=15pt}
+\definecolor{Navy}{HTML}{111827}
+\definecolor{Blue}{HTML}{2563EB}
+\definecolor{Cyan}{HTML}{06B6D4}
+\definecolor{Pale}{HTML}{EFF6FF}
+\definecolor{Slate}{HTML}{475569}
+\definecolor{Line}{HTML}{BFDBFE}
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{7pt}
+\pagestyle{plain}
+
+\newcommand{\pill}[1]{%
+  \colorbox{Pale}{\textcolor{Blue}{\strut\hspace{5pt}\textbf{#1}\hspace{5pt}}}%
+}
+
+\begin{document}
+
+\begin{titlepage}
+\pagecolor{Navy}
+\color{white}
+\vspace*{0.7cm}
+
+{\small\bfseries UNIVERSIDAD DEL VALLE DE GUATEMALA}\par
+{\small CC3084 · Data Science · Sección 10 · Grupo 1}\par
+
+\vspace{2.5cm}
+{\color{Cyan}\rule{\textwidth}{4pt}}\par
+\vspace{0.5cm}
+{\Huge\bfseries Laboratorio 7}\par
+\vspace{0.15cm}
+{\fontsize{30}{34}\selectfont Spark MLlib}\par
+\vspace{0.55cm}
+{\Large Perfiles laborales y predicción salarial con ENEIC}\par
+\vspace{0.5cm}
+{\color{Cyan}\rule{0.58\textwidth}{2pt}}\par
+
+\vspace{1.5cm}
+\colorbox{Blue}{%
+  \parbox{0.91\textwidth}{
+    \color{white}
+    \vspace{8pt}
+    \textbf{\large Repositorio oficial del proyecto}\par
+    \vspace{5pt}
+    {\color{white}\small\texttt{github.com/DanielBarillasM/}}\\
+    {\color{white}\small\texttt{Laboratorio-7\_Spark\_Grupo-1\_DS\_Sec-10}}
+    \vspace{8pt}
+  }
+}
+
+\vfill
+\begin{tabularx}{\textwidth}{>{\color{white}}X >{\color{white}\bfseries}r}
+Jorge Gabriel Palacios Sales & 231385\\[8pt]
+Pablo Daniel Barillas Moreno & 22193\\[8pt]
+Roberto Emiliano Otoniel & 23968\\
+\end{tabularx}
+
+\vspace{0.8cm}
+{\small Segundo semestre 2026 · Avance funcional del 75\%}
+\end{titlepage}
+
+\nopagecolor
+\color{Navy}
+
+{\LARGE\bfseries Presentación del repositorio}\par
+{\color{Cyan}\rule{\textwidth}{3pt}}
+
+\vspace{0.35cm}
+Este repositorio documenta un flujo de análisis reproducible con Apache Spark para estudiar perfiles de trabajadores asalariados y validar modelos de predicción del salario mensual a partir de las bases de Personas de la Encuesta Nacional de Empleo e Ingresos Continua (ENEIC).
+
+\vspace{0.2cm}
+\pill{Python 3.11}\hspace{5pt}
+\pill{PySpark 3.5.1}\hspace{5pt}
+\pill{Spark MLlib}\hspace{5pt}
+\pill{ENEIC 2025--2026}
+
+\section*{\textcolor{Blue}{Contenido principal}}
+
+\begin{tabularx}{\textwidth}{>{\raggedright\arraybackslash\bfseries\color{Blue}}p{4.2cm} X}
+Notebook ejecutado &
+Código, tablas, gráficos e interpretaciones de las actividades 1--6.\\[6pt]
+Módulos reproducibles &
+Carga y armonización, auditoría de calidad, EDA, KMeans, regresión lineal, Random Forest y visualización.\\[6pt]
+Informe técnico &
+Documento \LaTeX{} compilado con metodología, resultados, figuras, limitaciones y estado del avance.\\[6pt]
+Resultados &
+Tablas CSV y figuras PNG generadas sobre los conjuntos completos o agregados permitidos.\\
+\end{tabularx}
+
+\section*{\textcolor{Blue}{Alcance del avance}}
+
+\begin{itemize}
+  \item Actividades 1--4 de la entrega de avance completamente ejecutadas.
+  \item Actividades 5--6 completadas con validación temporal en 2025T4.
+  \item Datos elegibles de 2026T1 preparados, pero reservados para la evaluación final.
+  \item Actividades 7--8 delimitadas como el 25\% restante.
+\end{itemize}
+
+\section*{\textcolor{Blue}{Reproducibilidad}}
+
+El proyecto fija semilla 42, usa exactamente seis predictores autorizados, mantiene los datos y modelos pesados fuera de Git y documenta su ubicación en el README. Las métricas se calculan con Spark sobre el conjunto completo; pandas se limita a agregados o muestras gráficas de hasta 5,000 registros.
+
+\vfill
+\colorbox{Pale}{%
+  \parbox{0.95\textwidth}{
+    \vspace{7pt}
+    \textbf{\textcolor{Blue}{Acceso directo}}\par
+    \texttt{github.com/DanielBarillasM/}\\
+    \texttt{Laboratorio-7\_Spark\_Grupo-1\_DS\_Sec-10}
+    \vspace{7pt}
+  }
+}
+
+\end{document}

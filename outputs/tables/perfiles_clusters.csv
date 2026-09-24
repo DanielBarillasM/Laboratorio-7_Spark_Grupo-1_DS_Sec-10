@@ -1,0 +1,3 @@
+cluster,n,edad_media,edad_mediana,antiguedad_media,antiguedad_mediana,horas_semanales_media,horas_semanales_mediana,porcentaje,descripcion
+0,38421,29.071211056453503,28.0,2.424409827958668,1.3333333333333333,48.21243590744645,46.0,72.45827439886845,"Edad bajo, antiguedad bajo, horas semanales alto"
+1,14604,51.279101615995614,51.0,13.80502487902858,13.0,41.29553546973432,40.0,27.541725601131542,"Edad alto, antiguedad alto, horas semanales bajo"

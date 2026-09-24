@@ -1,0 +1,9 @@
+paso,criterio,antes,excluidos,despues
+0,Registros de entrada,49843,0,49843
+1,Edad finita y >= 15,49843,14803,35040
+2,Persona ocupada (OCUPADOS = 1),35040,13306,21734
+3,"Categoria asalariada (P05C16 en 1,2,3,4)",21734,8476,13258
+4,Salario finito y positivo,13258,0,13258
+5,Componentes de antiguedad validos,13258,0,13258
+6,Antiguedad <= edad,13258,0,13258
+7,"Horas semanales en (0, 168]",13258,0,13258

@@ -1,0 +1,16 @@
+variable,categoria,n,porcentaje
+categoria_ocupacional,Empleado de empresa privada,28702,54.12918434700613
+categoria_ocupacional,Jornalero o peon,13842,26.104667609618105
+categoria_ocupacional,Empleado de gobierno,6575,12.3998114097124
+categoria_ocupacional,Servicio domestico,3906,7.366336633663367
+nivel_educativo,Diversificado,16851,31.77934936350778
+nivel_educativo,Primaria,15822,29.838755304101838
+nivel_educativo,Basico,8249,15.556812824139557
+nivel_educativo,Superior,6818,12.858085808580858
+nivel_educativo,Ninguno,3995,7.534181989627534
+nivel_educativo,Maestria,771,1.454031117397454
+nivel_educativo,Preprimaria,459,0.8656294200848657
+nivel_educativo,Doctorado,60,0.11315417256011315
+dominio,Urbano Metropolitano,22072,41.625648279113626
+dominio,Resto Urbano,20146,37.993399339933994
+dominio,Rural Nacional,10807,20.38095238095238

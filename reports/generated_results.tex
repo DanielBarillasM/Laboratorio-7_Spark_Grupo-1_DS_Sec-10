@@ -1,0 +1,37 @@
+\subsection{Hallazgos principales}
+Después de aplicar los criterios de elegibilidad se conservaron \textbf{53,025} registros de 2025. El salario medio fue \textbf{Q3,421.68} y la mediana \textbf{Q3,000.00}; esta separación evidencia asimetría y la influencia de valores altos.
+La asociación lineal absoluta más alta con salario entre los predictores numéricos corresponde a \texttt{antiguedad} ($|r|=0.180$).
+KMeans seleccionó \textbf{Perfil laboral (sin salario)} con $K=2$ y silhouette 0.5545.
+En validación temporal, \textbf{RF\_50\_arboles\_d7} obtuvo el menor RMSE (Q2,074.15), con MAE Q1,109.94 y $R^2=0.4831$. La prueba 2026 permanece reservada.
+\subsection{Retención por período}
+\begin{table}[htbp]\centering\small
+\begin{tabular}{lrrrr}\toprule
+Período & Antes & Después & Excluidos & Retención \\ \midrule
+2025T1 & 51,588 & 13,419 & 38,169 & 26.01\% \\
+2025T2 & 51,167 & 13,492 & 37,675 & 26.37\% \\
+2025T3 & 51,583 & 13,450 & 38,133 & 26.07\% \\
+2025T4 & 49,338 & 12,664 & 36,674 & 25.67\% \\
+\bottomrule\end{tabular}
+\caption{Registros antes y después de los filtros comunes.}
+\end{table}
+\subsection{Descriptivos principales}
+\begin{table}[htbp]\centering\scriptsize
+\begin{tabular}{lrrrrrr}\toprule
+Variable & Media & Mediana & DE & P25 & P75 & P95 \\ \midrule
+salario\_mensual & 3,421.68 & 3,000.00 & 2,902.11 & 1,800.00 & 4,000.00 & 8,000.00 \\
+edad & 35.19 & 33.00 & 13.52 & 24.00 & 44.00 & 61.00 \\
+antiguedad & 5.56 & 2.00 & 7.83 & 0.50 & 7.00 & 21.42 \\
+horas\_semanales & 46.31 & 45.00 & 18.63 & 40.00 & 55.00 & 80.00 \\
+\bottomrule\end{tabular}
+\caption{Estadísticas calculadas sobre todos los registros elegibles de 2025.}
+\end{table}
+\subsection{Comparación de modelos en 2025T4}
+\begin{table}[htbp]\centering\small
+\begin{tabular}{lrrr}\toprule
+Modelo & MAE (Q) & RMSE (Q) & $R^2$ \\ \midrule
+RF\_50\_arboles\_d7 & 1,109.94 & 2,074.15 & 0.4831 \\
+LR\_sin\_regularizacion & 1,210.14 & 2,186.42 & 0.4257 \\
+Referencia: media de entrenamiento & 1,672.50 & 2,889.57 & -0.0031 \\
+\bottomrule\end{tabular}
+\caption{Métricas no ponderadas sobre el mismo conjunto de validación.}
+\end{table}

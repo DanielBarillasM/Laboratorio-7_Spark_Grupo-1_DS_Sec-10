@@ -1,0 +1,125 @@
+\documentclass[11pt,letterpaper]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage{geometry}
+\usepackage{xcolor}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{tabularx}
+
+\geometry{margin=2.2cm,headheight=15pt}
+\definecolor{Navy}{HTML}{172033}
+\definecolor{Blue}{HTML}{2563EB}
+\definecolor{Cyan}{HTML}{06B6D4}
+\definecolor{Pale}{HTML}{EFF6FF}
+\definecolor{Muted}{HTML}{64748B}
+\graphicspath{{../outputs/figures/}}
+\pagestyle{plain}
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{6pt}
+
+\begin{document}
+
+\begin{titlepage}
+\pagecolor{Navy}
+\color{white}
+\vspace*{1.2cm}
+{\small UNIVERSIDAD DEL VALLE DE GUATEMALA}\par
+\vspace{2.2cm}
+{\Huge\bfseries Laboratorio 7}\par
+\vspace{0.25cm}
+{\fontsize{30}{34}\selectfont Spark MLlib}\par
+\vspace{0.7cm}
+{\Large Perfiles laborales y predicción salarial con ENEIC}\par
+\vspace{1.5cm}
+\colorbox{Blue}{\parbox{0.88\textwidth}{\color{white}\centering\large Avance funcional del 75\% · Actividades 1--6 completas}}
+\vfill
+\begin{tabularx}{\textwidth}{X r}
+\textbf{Jorge Gabriel Palacios Sales} & 231385\\[6pt]
+\textbf{Pablo Daniel Barillas Moreno} & 22193\\[6pt]
+\textbf{Roberto Emiliano Otoniel} & 23968\\
+\end{tabularx}
+\vspace{1cm}
+CC3084 · Data Science · Sección 10 · Grupo 1\\
+Segundo semestre 2026
+\vspace*{0.7cm}
+\end{titlepage}
+\nopagecolor
+\color{Navy}
+
+\section{Resumen ejecutivo}
+
+Se construyó un flujo reproducible con Python 3.11, Spark 3.5.1 y la API \texttt{pyspark.ml}. El avance procesa las bases oficiales de Personas ENEIC, preserva su procedencia, audita cada exclusión, caracteriza la población analítica, compara segmentaciones KMeans y valida dos familias de regresión mediante una separación temporal. Los resultados son no ponderados y no deben interpretarse como estimaciones oficiales ni relaciones causales.
+
+\input{generated_results.tex}
+
+\section{Datos y preparación}
+
+Se utilizaron los cuatro trimestres de 2025 para desarrollo y el primer trimestre de 2026 como prueba reservada. Cada Excel se leyó individualmente con \texttt{openpyxl}; únicamente las variables necesarias se convirtieron a un DataFrame Spark con esquema explícito y luego a Parquet. La unión de 2025 se realizó con \texttt{unionByName}, indispensable porque 2025T4 contiene 302 columnas originales y los otros cortes 270.
+
+La población analítica exige edad mayor o igual a 15, condición de ocupado, categoría asalariada, salario mensual positivo y finito, antigüedad coherente y una jornada entre 1 y 168 horas. Los faltantes o códigos categóricos no reconocidos se identifican como \texttt{DESCONOCIDO}; el nivel educativo 0 se conserva como \emph{Ninguno}. No se imputó, recortó ni transformó el salario objetivo.
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=\textwidth]{distribuciones_categoricas.png}
+\caption{Composición de los registros elegibles de 2025.}
+\end{figure}
+
+\section{Exploración y relaciones}
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=\textwidth]{distribucion_salario.png}
+\caption{Distribución salarial. La escala logarítmica se usa solo para visualización.}
+\end{figure}
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.92\textwidth]{salario_mediano_grupos.png}
+\caption{Salario mediano por nivel educativo y categoría ocupacional.}
+\end{figure}
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.78\textwidth]{correlaciones_pearson.png}
+\caption{Correlaciones de Pearson calculadas con todos los registros elegibles de 2025.}
+\end{figure}
+
+\section{Segmentación KMeans}
+
+Se estandarizaron las variables y se compararon $K=2,3,4,5$ tanto con un perfil laboral sin salario como con un perfil económico que lo incorpora. La elección se basa en silhouette; la descripción de los clústeres es relativa a las medias del conjunto y no representa categorías naturales.
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.82\textwidth]{seleccion_kmeans.png}
+\caption{Selección de K y sensibilidad a la inclusión del salario.}
+\end{figure}
+
+\section{Modelado supervisado}
+
+Los modelos utilizan exactamente edad, antigüedad, horas semanales, nivel educativo, categoría ocupacional y dominio. Se entrenó con 2025T1--T3 y se validó en 2025T4. Los indexadores, codificadores y estimadores se ajustaron solo con entrenamiento. La regresión lineal compara tres regularizaciones y Random Forest dos configuraciones de árboles y profundidad.
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.86\textwidth]{comparacion_modelos_validacion.png}
+\caption{RMSE de validación frente al modelo de referencia.}
+\end{figure}
+
+\section{Estado y trabajo restante}
+
+Las actividades 1--6 están ejecutadas y sus modelos ganadores se guardaron fuera de Git. Para la entrega final se reentrenará cada configuración seleccionada con todo 2025, se evaluará una sola vez sobre 2026T1 y se completarán gráficos de predicción, residuos, errores por educación y dominio, análisis por percentiles y discusión final.
+
+\section{Reproducibilidad y limitaciones}
+
+El notebook fija semilla 42, mantiene el test temporal aislado y limita cualquier transferencia a pandas a agregados o una muestra gráfica de 5,000 filas. \texttt{FACTOR} se conserva para documentar el diseño, pero las métricas obligatorias son no ponderadas. El repositorio no incluye Excel, Parquet ni modelos por su tamaño; el README documenta las rutas y dependencias.
+
+\section{Fuente}
+
+Instituto Nacional de Estadística de Guatemala. \emph{Encuesta Nacional de Empleo e Ingresos Continua (ENEIC)}, bases de Personas 2025--2026.\\
+\texttt{https://www.ine.gob.gt/encuesta-nacional-de-empleo-e-ingresos/}
+
+Kassis, T., Agarwal, V., He, Y., Patel, D. y Brueckner, A. M. (2026). \emph{Scientific Agent Skills: A Library of Procedural Knowledge for Research Agents}. arXiv:2609.00065. DOI: \texttt{10.48550/arXiv.2609.00065}.
+
+\end{document}
