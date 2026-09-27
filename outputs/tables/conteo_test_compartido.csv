@@ -1,0 +1,6 @@
+conjunto,registros
+Test elegible 2026T1,13258
+Predicciones LR_sin_regularizacion,13258
+Predicciones RF_50_arboles_d7,13258
+Registros compartidos (join por clave),13258
+Claves distintas compartidas,13258

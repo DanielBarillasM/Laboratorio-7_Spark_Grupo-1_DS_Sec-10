@@ -34,3 +34,9 @@ ficha_repositorio/*.fdb_latexmk
 !reports/*.pdf
 !outputs/tables/*.csv
 !outputs/figures/*.png
+
+# Memoria local de memsearch
+.memsearch/
+
+# Datos ENEIC descargados localmente
+working_dir/

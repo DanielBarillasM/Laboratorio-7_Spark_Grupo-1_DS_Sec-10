@@ -29,7 +29,7 @@ def build() -> None:
                 "name": "python3",
             },
             "language_info": {"name": "python", "version": "3.11"},
-            "lab7": {"scope": "avance_75", "seed": 42},
+            "lab7": {"scope": "actividades_1_a_7", "seed": 42},
         }
     )
     notebook.cells = [
@@ -50,7 +50,7 @@ table { font-size:13px !important; }
 
 <div class="lab-hero">
   <h1>Laboratorio 7 · Spark MLlib</h1>
-  <p><b>Avance funcional del 75%</b> · ENEIC Personas 2025–2026</p>
+  <p><b>Actividades 1–7: exploración, segmentación, modelado y evaluación en 2026</b> · ENEIC Personas 2025–2026</p>
   <p>Universidad del Valle de Guatemala · CC3084 Data Science · Sección 10 · Grupo 1 · Segundo semestre 2026</p>
 </div>
 
@@ -67,9 +67,9 @@ table { font-size:13px !important; }
 
 Este notebook identifica perfiles de trabajadores asalariados y evalúa qué tan bien puede estimarse su salario mensual mediante Spark 3.5.1 y `pyspark.ml`. El procedimiento conserva la trazabilidad por archivo, evita interpretar asociaciones como causalidad y calcula las métricas sobre los conjuntos completos.
 
-**Alcance ejecutado en este avance:** actividades 1–6 completas. Se preparan por separado los datos elegibles de 2026, pero se reservan la evaluación final (actividad 7) y el análisis exhaustivo de errores (actividad 8) para la entrega final.
+**Alcance ejecutado:** actividades 1–7. El análisis exhaustivo de errores (actividad 8) se construye sobre las predicciones de 2026 que deja guardadas la sección 7.
 
-**Diseño temporal:** 2025T1–2025T3 se utilizan para entrenamiento; 2025T4 para validación y selección. 2026T1 no se consulta para escoger configuraciones.
+**Diseño temporal:** 2025T1–2025T3 se utilizan para entrenamiento; 2025T4 para validación y selección. Después, cada configuración ganadora se reentrena con los cuatro trimestres de 2025 y se evalúa una sola vez en 2026T1. 2026T1 nunca se consulta para escoger configuraciones.
 """
         ),
         code(
@@ -81,13 +81,17 @@ import sys
 from IPython.display import HTML, Image, display
 import pandas as pd
 import pyspark
-from pyspark.sql import SparkSession
+from pyspark.sql import SparkSession, functions as F
 
 cwd = Path.cwd().resolve()
 REPO_ROOT = cwd if (cwd / "src").exists() else cwd.parent
 sys.path.insert(0, str(REPO_ROOT / "src"))
 
-from lab7.config import FIGURES_DIR, TABLES_DIR, ensure_directories
+from lab7.config import (
+    FIGURES_DIR, FINAL_FOREST_MODEL, FINAL_LINEAR_MODEL, FINAL_TRAIN_PERIODS,
+    MODEL_DIR, TABLES_DIR, TEST_PERIODS, TRAIN_PERIODS, VALIDATION_PERIODS,
+    ensure_directories,
+)
 from lab7.data import (
     convert_excel_sources, counts_by_file, duplicate_key_audit,
     filter_analytical_population, harmonize, load_periods,
@@ -98,8 +102,8 @@ from lab7.analysis import (
     median_salary_by, pearson_correlation, quarterly_summary, salary_plot_sample,
 )
 from lab7.modeling import (
-    baseline_metrics, comparison_table, final_stage_plan,
-    fit_linear_candidates, fit_random_forest_candidates,
+    baseline_metrics, comparison_table, final_comparison_table, final_stage_plan,
+    fit_final_models, fit_linear_candidates, fit_random_forest_candidates,
 )
 from lab7.visualization import (
     plot_categorical_distributions, plot_correlation_heatmap,
@@ -287,8 +291,8 @@ Se usan exactamente seis predictores: edad, antigüedad, horas semanales, nivel 
         ),
         code(
             """
-train = prepared_2025.filter("periodo_archivo IN ('2025T1','2025T2','2025T3')").cache()
-validation = prepared_2025.filter("periodo_archivo = '2025T4'").cache()
+train = prepared_2025.filter(F.col("periodo_archivo").isin(*TRAIN_PERIODS)).cache()
+validation = prepared_2025.filter(F.col("periodo_archivo").isin(*VALIDATION_PERIODS)).cache()
 split_counts = pd.DataFrame({
     "conjunto": ["Entrenamiento 2025T1-T3", "Validacion 2025T4", "Test reservado 2026T1"],
     "registros": [train.count(), validation.count(), prepared_2026.count()],
@@ -318,15 +322,98 @@ winner = comparison.iloc[0]
 baseline_rmse = float(comparison.loc[comparison["modelo"] == "Referencia: media de entrenamiento", "RMSE"].iloc[0])
 improvement = 100 * (baseline_rmse - float(winner["RMSE"])) / baseline_rmse
 display(HTML(f'''
-<div class='lab-note'><b>Resultado de validación.</b> El menor RMSE corresponde a <code>{winner['modelo']}</code>: MAE Q{winner['MAE']:,.2f}, RMSE Q{winner['RMSE']:,.2f} y R² {winner['R2']:.4f}. Frente a la referencia, el RMSE cambia {improvement:.2f}%. Random Forest puede capturar relaciones no lineales e interacciones; la regresión lineal ofrece una estructura más parsimoniosa. La comparación definitiva aún depende del test 2026.</div>
+<div class='lab-note'><b>Resultado de validación.</b> El menor RMSE corresponde a <code>{winner['modelo']}</code>: MAE Q{winner['MAE']:,.2f}, RMSE Q{winner['RMSE']:,.2f} y R² {winner['R2']:.4f}. Frente a la referencia, el RMSE mejora {improvement:.2f}%. Random Forest puede capturar relaciones no lineales e interacciones; la regresión lineal ofrece una estructura más parsimoniosa. La comparación definitiva se hace en la sección 7 con el test 2026.</div>
 '''))
 """
         ),
-        md("## 7. Estado del avance y trabajo reservado"),
+        md(
+            """
+## 7. Entrenamiento final y evaluación en 2026
+
+La selección de hiperparámetros ya quedó cerrada con 2025T4 en la sección anterior: se toma la configuración con menor RMSE de validación por algoritmo. Aquí **no se vuelve a escoger nada**; cada pipeline completo (`StringIndexer` → `OneHotEncoder` → `VectorAssembler` → modelo) se ajusta de nuevo con los cuatro trimestres de 2025 y se aplica una sola vez a 2026T1.
+
+- 2026T1 pasó por las mismas reglas de preparación (`harmonize` + `filter_analytical_population`) que 2025; su embudo se guardó en `auditoria_filtros_2026.csv`.
+- Ambos modelos se unen por `periodo_archivo`, `NUM_HOGAR` y `NUM_PERSONA` antes de calcular métricas, de modo que se evalúan sobre exactamente los mismos registros.
+- La referencia predice la media salarial de 2025 completo (el mismo conjunto con el que se reentrenan los modelos).
+- Las métricas son no ponderadas y se calculan sobre todo el test; el salario objetivo no se recorta ni se transforma.
+- Residuo = salario real − salario predicho: positivo indica subestimación y negativo sobreestimación.
+"""
+        ),
+        code(
+            """
+full_train_2025 = prepared_2025.filter(F.col("periodo_archivo").isin(*FINAL_TRAIN_PERIODS)).cache()
+test_2026 = prepared_2026.filter(F.col("periodo_archivo").isin(*TEST_PERIODS)).cache()
+assert full_train_2025.count() == prepared_2025.count(), "El reentrenamiento debe usar todo 2025"
+assert test_2026.count() == prepared_2026.count()
+
+test_key_audit = duplicate_key_audit(harmonized_2026)
+assert int(test_key_audit["grupos_duplicados"].iloc[0]) == 0, "Claves duplicadas en 2026"
+
+selected_configs = pd.DataFrame([
+    {"algoritmo": "Regresion lineal", **best_linear_config,
+     "RMSE_validacion_2025T4": float(linear_results.iloc[0]["RMSE"])},
+    {"algoritmo": "Random Forest", **best_forest_config,
+     "RMSE_validacion_2025T4": float(forest_results.iloc[0]["RMSE"])},
+])
+display(HTML("<h4>Configuraciones seleccionadas con 2025T4</h4>"))
+display(selected_configs)
+
+final = fit_final_models(full_train_2025, test_2026, best_linear_config, best_forest_config)
+test_metrics = final["metrics"]
+shared_counts = final["counts"]
+final_comparison = final_comparison_table(comparison, test_metrics)
+
+test_metrics.to_csv(TABLES_DIR / "metricas_test_2026.csv", index=False)
+final_comparison.to_csv(TABLES_DIR / "comparacion_final_modelos.csv", index=False)
+shared_counts.to_csv(TABLES_DIR / "conteo_test_compartido.csv", index=False)
+test_key_audit.to_csv(TABLES_DIR / "auditoria_claves_2026.csv", index=False)
+
+display(HTML("<h4>Registros de entrenamiento final y prueba</h4>"))
+display(pd.DataFrame({
+    "conjunto": ["Entrenamiento final 2025T1-T4", "Prueba 2026T1"],
+    "registros": [final["train_rows"], final["test_rows"]],
+}))
+display(HTML("<h4>Mismo test para ambos modelos</h4>"))
+display(shared_counts)
+assert shared_counts["registros"].nunique() == 1
+display(HTML("<h4>Métricas en 2026T1 (no ponderadas, test completo)</h4>"))
+display(test_metrics.style.format({"MAE": "{:,.2f}", "RMSE": "{:,.2f}", "R2": "{:.4f}"}))
+display(HTML("<h4>Validación 2025T4 frente a prueba 2026T1</h4>"))
+money = [c for c in final_comparison.columns if c.startswith(("MAE", "RMSE", "mejora", "cambio"))]
+display(final_comparison.style.format({**{c: "{:,.2f}" for c in money}, "R2": "{:.4f}", "R2_validacion": "{:.4f}"}))
+
+for name in (FINAL_LINEAR_MODEL, FINAL_FOREST_MODEL):
+    assert (MODEL_DIR / name / "metadata").exists(), f"No se guardó {name}"
+print("Modelos finales:", MODEL_DIR / FINAL_LINEAR_MODEL, "|", MODEL_DIR / FINAL_FOREST_MODEL)
+print("Predicciones 2026 (Parquet):", final["predictions_path"])
+"""
+        ),
+        code(
+            """
+models_only = final_comparison[~final_comparison["modelo"].str.startswith("Referencia")]
+test_winner = models_only.iloc[0]
+test_runner = models_only.iloc[1]
+reference = final_comparison[final_comparison["modelo"].str.startswith("Referencia")].iloc[0]
+validation_winner = comparison[~comparison["modelo"].str.startswith("Referencia")].iloc[0]["modelo"]
+same_winner = "coincide" if validation_winner == test_winner["modelo"] else "no coincide"
+
+display(HTML(f'''
+<div class='lab-note'><b>Interpretación de la prueba 2026.</b>
+<ul>
+<li><b>Mejor modelo en 2026T1:</b> <code>{test_winner['modelo']}</code> con MAE Q{test_winner['MAE']:,.2f}, RMSE Q{test_winner['RMSE']:,.2f} y R² {test_winner['R2']:.4f}. El otro algoritmo (<code>{test_runner['modelo']}</code>) obtuvo MAE Q{test_runner['MAE']:,.2f}, RMSE Q{test_runner['RMSE']:,.2f} y R² {test_runner['R2']:.4f}.</li>
+<li><b>Frente a la referencia:</b> la media de 2025 produce RMSE Q{reference['RMSE']:,.2f} y R² {reference['R2']:.4f}; el ganador reduce el RMSE en {test_winner['mejora_RMSE_vs_referencia_pct']:.2f}%. Que la referencia tenga R² cercano a cero es esperable, porque predice una constante.</li>
+<li><b>Estabilidad temporal:</b> el RMSE del ganador cambia Q{test_winner['cambio_RMSE_validacion_a_test']:,.2f} entre validación 2025T4 y prueba 2026T1, y el ganador de validación ({validation_winner}) {same_winner} con el de prueba. Esto indica qué tan bien se sostiene fuera de tiempo la selección hecha solo con 2025.</li>
+<li><b>Por qué un algoritmo generaliza mejor:</b> Random Forest captura no linealidades (por ejemplo, rendimientos decrecientes de la edad o la antigüedad) e interacciones entre educación, categoría ocupacional y dominio sin especificarlas; la regresión lineal impone efectos aditivos y constantes. Aun así, ambos dejan sin explicar una parte importante de la variabilidad: faltan variables relevantes (ocupación, rama de actividad, tamaño de empresa) y los salarios extremos pesan mucho en el RMSE.</li>
+</ul>
+Estas métricas describen los registros elegibles analizados; no son estimaciones oficiales ni implican causalidad.</div>
+'''))
+"""
+        ),
+        md("## Estado de las actividades"),
         code(
             """
 pending = final_stage_plan()
-display(HTML("<div class='lab-pending'><b>25% reservado para la entrega final</b><ol>" + "".join(f"<li>{item}</li>" for item in pending) + "</ol></div>"))
+display(HTML("<div class='lab-pending'><b>Pendiente (actividad 8)</b><ol>" + "".join(f"<li>{item}</li>" for item in pending) + "</ol></div>"))
 
 progress = pd.DataFrame([
     ("1. Carga, armonizacion y calidad", "Completo"),
@@ -335,8 +422,8 @@ progress = pd.DataFrame([
     ("4. KMeans", "Completo"),
     ("5. Regresion lineal", "Completo"),
     ("6. Random Forest", "Completo"),
-    ("7. Evaluacion final 2026", "Preparado; ejecucion reservada"),
-    ("8. Analisis de errores", "Pendiente para entrega final"),
+    ("7. Evaluacion final 2026", "Completo"),
+    ("8. Analisis de errores", "Pendiente"),
 ], columns=["actividad", "estado"])
 display(progress)
 progress.to_csv(TABLES_DIR / "estado_avance.csv", index=False)
@@ -346,15 +433,15 @@ progress.to_csv(TABLES_DIR / "estado_avance.csv", index=False)
             """
 ## Conclusiones provisionales
 
-El avance deja una ruta reproducible desde los Excel oficiales hasta Parquet, documenta el efecto de cada filtro, responde la exploración solicitada, compara alternativas de segmentación y selecciona configuraciones supervisadas sin tocar el test 2026. Los resultados no son estimaciones oficiales porque las métricas son deliberadamente no ponderadas. La entrega final deberá comprobar estabilidad fuera de tiempo y estudiar dónde se concentran los errores, especialmente en salarios altos.
+El flujo va de los Excel oficiales a Parquet, documenta el efecto de cada filtro, responde la exploración solicitada, compara alternativas de segmentación y selecciona configuraciones supervisadas usando solo 2025T4. La evaluación en 2026T1 se hizo una única vez, con los modelos reentrenados en todo 2025 y sobre exactamente los mismos registros. Las métricas son deliberadamente no ponderadas, por lo que no son estimaciones oficiales. Falta estudiar dónde se concentran los errores, especialmente en salarios altos (actividad 8).
 """
         ),
         code(
             """
 # Liberación explícita de caché al terminar la ejecución reproducible.
-for frame in [raw_2025, raw_2026, harmonized_2025, harmonized_2026, prepared_2025, prepared_2026, train, validation]:
+for frame in [raw_2025, raw_2026, harmonized_2025, harmonized_2026, prepared_2025, prepared_2026, train, validation, full_train_2025, test_2026]:
     frame.unpersist()
-print("Avance ejecutado correctamente. Spark queda disponible para inspección interactiva.")
+print("Notebook ejecutado correctamente. Spark queda disponible para inspección interactiva.")
 """
         ),
     ]

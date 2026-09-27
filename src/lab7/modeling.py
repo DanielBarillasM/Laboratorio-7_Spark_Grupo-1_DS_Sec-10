@@ -13,10 +13,15 @@ from pyspark.sql import DataFrame, functions as F
 
 from .config import (
     CATEGORICAL_PREDICTORS,
+    FINAL_FOREST_MODEL,
+    FINAL_LINEAR_MODEL,
     LABEL,
     MODEL_DIR,
     NUMERIC_PREDICTORS,
+    PARQUET_DIR,
+    RECORD_KEYS,
     SEED,
+    TEST_PREDICTIONS,
 )
 
 
@@ -64,6 +69,35 @@ def _preprocessing_stages() -> list:
     return [*indexers, encoder, assembler]
 
 
+def _linear_estimator(config: dict) -> LinearRegression:
+    return LinearRegression(
+        featuresCol="features",
+        labelCol=LABEL,
+        predictionCol="prediction",
+        maxIter=150,
+        tol=1e-6,
+        standardization=True,
+        regParam=float(config["regParam"]),
+        elasticNetParam=float(config["elasticNetParam"]),
+    )
+
+
+def _forest_estimator(config: dict) -> RandomForestRegressor:
+    return RandomForestRegressor(
+        featuresCol="features",
+        labelCol=LABEL,
+        predictionCol="prediction",
+        numTrees=int(config["numTrees"]),
+        maxDepth=int(config["maxDepth"]),
+        seed=SEED,
+        featureSubsetStrategy="auto",
+        subsamplingRate=0.8,
+        maxBins=32,
+        maxMemoryInMB=64,
+        cacheNodeIds=False,
+    )
+
+
 def fit_linear_candidates(
     train: DataFrame,
     validation: DataFrame,
@@ -79,16 +113,7 @@ def fit_linear_candidates(
     config_map = {item["nombre"]: item for item in configs}
 
     for config in configs:
-        estimator = LinearRegression(
-            featuresCol="features",
-            labelCol=LABEL,
-            predictionCol="prediction",
-            maxIter=150,
-            tol=1e-6,
-            standardization=True,
-            regParam=float(config["regParam"]),
-            elasticNetParam=float(config["elasticNetParam"]),
-        )
+        estimator = _linear_estimator(config)
         model = Pipeline(stages=[*_preprocessing_stages(), estimator]).fit(train)
         metrics = regression_metrics(model.transform(validation))
         rows.append({**config, **metrics})
@@ -115,19 +140,7 @@ def fit_random_forest_candidates(
     config_map = {item["nombre"]: item for item in configs}
 
     for config in configs:
-        estimator = RandomForestRegressor(
-            featuresCol="features",
-            labelCol=LABEL,
-            predictionCol="prediction",
-            numTrees=int(config["numTrees"]),
-            maxDepth=int(config["maxDepth"]),
-            seed=SEED,
-            featureSubsetStrategy="auto",
-            subsamplingRate=0.8,
-            maxBins=32,
-            maxMemoryInMB=64,
-            cacheNodeIds=False,
-        )
+        estimator = _forest_estimator(config)
         model = Pipeline(stages=[*_preprocessing_stages(), estimator]).fit(train)
         metrics = regression_metrics(model.transform(validation))
         rows.append({**config, **metrics})
@@ -166,12 +179,124 @@ def comparison_table(
     ).sort_values("RMSE").reset_index(drop=True)
 
 
+def _assert_unique_keys(frame: DataFrame, name: str) -> int:
+    total = frame.count()
+    distinct = frame.select(*RECORD_KEYS).distinct().count()
+    if total != distinct:
+        raise ValueError(f"{name}: {total} filas pero {distinct} claves distintas.")
+    return total
+
+
+def fit_final_models(
+    full_train: DataFrame,
+    test: DataFrame,
+    linear_config: dict,
+    forest_config: dict,
+    model_dir: Path = MODEL_DIR,
+    parquet_dir: Path = PARQUET_DIR,
+) -> dict[str, object]:
+    """Refit the validation winners on all of 2025 and score them on the same 2026 rows.
+
+    The configurations arrive already chosen on 2025T4; 2026 is used only to score.
+    """
+    train_rows = _assert_unique_keys(full_train, "Entrenamiento final 2025")
+    test_rows = _assert_unique_keys(test, "Test 2026")
+
+    linear_model = Pipeline(
+        stages=[*_preprocessing_stages(), _linear_estimator(linear_config)]
+    ).fit(full_train)
+    forest_model = Pipeline(
+        stages=[*_preprocessing_stages(), _forest_estimator(forest_config)]
+    ).fit(full_train)
+    linear_model.write().overwrite().save(str(model_dir / FINAL_LINEAR_MODEL))
+    forest_model.write().overwrite().save(str(model_dir / FINAL_FOREST_MODEL))
+
+    context = [*RECORD_KEYS, LABEL, *NUMERIC_PREDICTORS, *CATEGORICAL_PREDICTORS]
+    linear_pred = linear_model.transform(test).select(
+        *context, F.col("prediction").alias("prediccion_lr")
+    )
+    forest_pred = forest_model.transform(test).select(
+        *RECORD_KEYS, F.col("prediction").alias("prediccion_rf")
+    )
+    linear_rows = linear_pred.count()
+    forest_rows = forest_pred.count()
+
+    # Residuo = real - predicho: positivo indica subestimacion, negativo sobreestimacion.
+    baseline_mean = float(full_train.agg(F.avg(LABEL)).first()[0])
+    shared = (
+        linear_pred.join(forest_pred, list(RECORD_KEYS), "inner")
+        .withColumn("prediccion_referencia", F.lit(baseline_mean))
+        .withColumn("residuo_lr", F.col(LABEL) - F.col("prediccion_lr"))
+        .withColumn("residuo_rf", F.col(LABEL) - F.col("prediccion_rf"))
+    )
+    predictions_path = parquet_dir / TEST_PREDICTIONS
+    shared.write.mode("overwrite").parquet(str(predictions_path))
+    shared = shared.sparkSession.read.parquet(str(predictions_path))
+    shared_rows = shared.count()
+    shared_keys = shared.select(*RECORD_KEYS).distinct().count()
+
+    counts = pd.DataFrame(
+        [
+            {"conjunto": "Test elegible 2026T1", "registros": test_rows},
+            {"conjunto": f"Predicciones {linear_config['nombre']}", "registros": linear_rows},
+            {"conjunto": f"Predicciones {forest_config['nombre']}", "registros": forest_rows},
+            {"conjunto": "Registros compartidos (join por clave)", "registros": shared_rows},
+            {"conjunto": "Claves distintas compartidas", "registros": shared_keys},
+        ]
+    )
+    if counts["registros"].nunique() != 1:
+        raise ValueError(f"Los modelos no se evaluaron sobre los mismos registros:\n{counts}")
+
+    rows = []
+    for name, column, config in (
+        ("Referencia: media 2025", "prediccion_referencia", "media salarial 2025 completo"),
+        (str(linear_config["nombre"]), "prediccion_lr", _describe(linear_config)),
+        (str(forest_config["nombre"]), "prediccion_rf", _describe(forest_config)),
+    ):
+        scored = shared.withColumn("prediction", F.col(column))
+        rows.append(
+            {"modelo": name, "configuracion": config, "registros": shared_rows,
+             **regression_metrics(scored)}
+        )
+    metrics = pd.DataFrame(rows)
+
+    return {
+        "metrics": metrics,
+        "counts": counts,
+        "train_rows": train_rows,
+        "test_rows": test_rows,
+        "baseline_mean": baseline_mean,
+        "linear_model": linear_model,
+        "forest_model": forest_model,
+        "predictions": shared,
+        "predictions_path": predictions_path,
+    }
+
+
+def _describe(config: dict) -> str:
+    return ", ".join(f"{key}={value}" for key, value in config.items() if key != "nombre")
+
+
+def final_comparison_table(
+    validation_comparison: pd.DataFrame,
+    test_metrics: pd.DataFrame,
+) -> pd.DataFrame:
+    """Place validation (2025T4) and test (2026T1) metrics side by side."""
+    validation = validation_comparison.replace(
+        {"modelo": {"Referencia: media de entrenamiento": "Referencia: media 2025"}}
+    ).rename(columns={"MAE": "MAE_validacion", "RMSE": "RMSE_validacion", "R2": "R2_validacion"})
+    table = test_metrics.merge(validation, on="modelo", how="left")
+    baseline_rmse = float(table.loc[table["modelo"] == "Referencia: media 2025", "RMSE"].iloc[0])
+    table["mejora_RMSE_vs_referencia_pct"] = 100 * (baseline_rmse - table["RMSE"]) / baseline_rmse
+    table["cambio_RMSE_validacion_a_test"] = table["RMSE"] - table["RMSE_validacion"]
+    return table.sort_values("RMSE").reset_index(drop=True)
+
+
 def final_stage_plan() -> tuple[str, ...]:
-    """Explicit remaining work; intentionally not executed in the 75% advance."""
+    """Remaining work after the 2026 evaluation (activity 8)."""
     return (
-        "Reajustar cada configuracion ganadora con los cuatro trimestres de 2025.",
-        "Generar predicciones para todos los registros elegibles de 2026T1.",
-        "Calcular MAE, RMSE y R2 sobre exactamente el mismo test de 2026.",
-        "Construir diagnosticos de residuos y errores por educacion y dominio.",
+        "Graficar salario real vs. predicho y residuos vs. predicho con una muestra comun de 5,000.",
+        "Calcular MAE y error medio por nivel educativo y dominio con todo el test 2026.",
+        "Analizar percentiles salariales y la tendencia a sub/sobreestimar salarios altos.",
         "Redactar la discusion final y las limitaciones del estudio.",
     )

@@ -28,6 +28,12 @@ DATASETS = (
     DatasetSpec("Personas_ENEIC_I_2026.xlsx", "2026T1", 2026, 1, 49_843, 270),
 )
 
+TRAIN_PERIODS = ("2025T1", "2025T2", "2025T3")
+VALIDATION_PERIODS = ("2025T4",)
+FINAL_TRAIN_PERIODS = TRAIN_PERIODS + VALIDATION_PERIODS
+TEST_PERIODS = ("2026T1",)
+RECORD_KEYS = ("periodo_archivo", "NUM_HOGAR", "NUM_PERSONA")
+
 SOURCE_COLUMNS = (
     "NUM_HOGAR",
     "NUM_PERSONA",
@@ -84,6 +90,9 @@ PARQUET_DIR = Path(
     os.environ.get("ENEIC_PARQUET_DIR", "/opt/app/working_dir/eneic/parquet")
 )
 MODEL_DIR = Path(os.environ.get("ENEIC_MODEL_DIR", "/opt/app/working_dir/eneic/models"))
+FINAL_LINEAR_MODEL = "linear_regression_final_2025"
+FINAL_FOREST_MODEL = "random_forest_final_2025"
+TEST_PREDICTIONS = "predicciones_test_2026"
 OUTPUT_DIR = REPO_ROOT / "outputs"
 TABLES_DIR = OUTPUT_DIR / "tables"
 FIGURES_DIR = OUTPUT_DIR / "figures"

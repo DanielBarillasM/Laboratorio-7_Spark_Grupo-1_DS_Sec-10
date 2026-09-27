@@ -8,7 +8,7 @@
 
 [![Python](https://img.shields.io/badge/Python-3.11-3776AB?logo=python&logoColor=white)](https://www.python.org/)
 [![Apache Spark](https://img.shields.io/badge/Apache%20Spark-3.5.1-E25A1C?logo=apachespark&logoColor=white)](https://spark.apache.org/)
-[![Estado](https://img.shields.io/badge/avance-75%25-2563EB)](#estado-del-avance)
+[![Estado](https://img.shields.io/badge/actividades-7%2F8-2563EB)](#estado-del-avance)
 
 </div>
 
@@ -36,10 +36,10 @@ El avance mantiene 2026T1 completamente reservado como prueba final. Los resulta
 | 4. Segmentación KMeans | Completa |
 | 5. Pipeline de regresión lineal | Completa |
 | 6. Pipeline de Random Forest | Completa |
-| 7. Reentrenamiento 2025 y prueba 2026 | Preparada; reservada para la entrega final |
+| 7. Reentrenamiento 2025 y prueba 2026 | Completa |
 | 8. Visualización y análisis de errores | Pendiente para la entrega final |
 
-El avance oficial solicita las actividades 1–4. Este repositorio también deja ejecutadas las actividades 5–6 y preparados los datos de prueba.
+Las actividades 1–7 están ejecutadas. La actividad 8 parte de las predicciones de 2026 guardadas en `working_dir/eneic/parquet/predicciones_test_2026` (una fila por registro de prueba con la predicción y el residuo de ambos modelos).
 
 ## Estructura
 
@@ -69,7 +69,7 @@ Lab-7/
 └── requirements.txt
 ```
 
-Los Excel, Parquet y modelos entrenados se mantienen fuera de Git en `working_dir/eneic/` por tamaño. El notebook conserva las rutas configurables mediante variables de entorno.
+Los Excel, Parquet y modelos entrenados se mantienen fuera de Git en `working_dir/eneic/` por tamaño. Los modelos finales reentrenados con todo 2025 quedan en `working_dir/eneic/models/linear_regression_final_2025` y `random_forest_final_2025`. El notebook conserva las rutas configurables mediante variables de entorno.
 
 ## Datos requeridos
 
@@ -112,7 +112,7 @@ La primera ejecución convierte cada Excel por separado y guarda columnas selecc
 - Esquema explícito durante la conversión Excel → Spark.
 - Métricas sobre conjuntos completos; pandas solo recibe agregados o una muestra gráfica máxima de 5,000 filas.
 - Exactamente seis predictores supervisados, sin identificadores, `FACTOR`, ingresos derivados ni clúster.
-- Entrenamiento: 2025T1–T3; validación: 2025T4; test intacto: 2026T1.
+- Selección: entrenamiento 2025T1–T3 y validación 2025T4. Evaluación final: reentrenamiento con 2025T1–T4 y prueba única en 2026T1, con ambos modelos sobre los mismos registros.
 - No se recorta ni transforma el salario objetivo en la comparación obligatoria.
 
 ## Fuente
