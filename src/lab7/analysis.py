@@ -12,7 +12,15 @@ from pyspark.ml.feature import StandardScaler, VectorAssembler
 from pyspark.ml.stat import Correlation
 from pyspark.sql import DataFrame, functions as F
 
-from .config import MODEL_DIR, SEED
+from .config import (
+    EDUCATION_LABELS,
+    LABEL,
+    MODEL_DIR,
+    PARQUET_DIR,
+    RECORD_KEYS,
+    SEED,
+    TEST_PREDICTIONS,
+)
 
 
 DESCRIPTIVE_COLUMNS = (
@@ -210,3 +218,185 @@ def kmeans_search(
     best_model.write().overwrite().save(str(destination))
     predictions.unpersist()
     return results.reset_index(drop=True), profiles, best_model, scenario, k
+
+
+# ---------------------------------------------------------------------------
+# Actividad 8: analisis de errores sobre las predicciones de 2026T1
+# ---------------------------------------------------------------------------
+
+# Modelo -> columna de prediccion en el Parquet guardado por la actividad 7.
+MODEL_COLUMNS = {
+    "Regresión lineal": "prediccion_lr",
+    "Random Forest": "prediccion_rf",
+}
+EDUCATION_ORDER = [EDUCATION_LABELS[key] for key in sorted(EDUCATION_LABELS)] + [
+    "DESCONOCIDO"
+]
+PERCENTILE_CUTS = (0.25, 0.50, 0.75, 0.90, 0.95)
+PLOT_SAMPLE_SIZE = 5_000
+
+
+def load_test_predictions(spark, path: Path | None = None) -> DataFrame:
+    """Read the 2026T1 predictions written by activity 7 (one row per test record).
+
+    Residual convention (identical for every table and plot):
+    ``residuo = salario_real - salario_predicho``. Positive means the model
+    underestimated the salary; negative means it overestimated it.
+    """
+    source = path or (PARQUET_DIR / TEST_PREDICTIONS)
+    frame = spark.read.parquet(str(source))
+    needed = {LABEL, "nivel_educativo", "dominio", *RECORD_KEYS, *MODEL_COLUMNS.values()}
+    missing = needed - set(frame.columns)
+    if missing:
+        raise ValueError(f"Faltan columnas en las predicciones: {sorted(missing)}")
+    return frame
+
+
+def _long_errors(predictions: DataFrame) -> DataFrame:
+    """Stack both models into one long frame: modelo, prediccion, residuo, error_abs."""
+    pieces = []
+    for model, column in MODEL_COLUMNS.items():
+        pieces.append(
+            predictions.select(
+                *RECORD_KEYS,
+                LABEL,
+                "nivel_educativo",
+                "dominio",
+                F.lit(model).alias("modelo"),
+                F.col(column).alias("prediccion"),
+            )
+        )
+    stacked = pieces[0]
+    for piece in pieces[1:]:
+        stacked = stacked.unionByName(piece)
+    return stacked.withColumn("residuo", F.col(LABEL) - F.col("prediccion")).withColumn(
+        "error_abs", F.abs(F.col("residuo"))
+    )
+
+
+def plot_comparison_sample(
+    predictions: DataFrame, limit: int = PLOT_SAMPLE_SIZE
+) -> pd.DataFrame:
+    """One reproducible sample (<= 5,000 rows) shared by both models for plotting only.
+
+    Rows are ordered by a hash of the record key salted with the global seed, so
+    the sample does not depend on Spark partitioning and is identical between runs.
+    """
+    if limit > PLOT_SAMPLE_SIZE:
+        raise ValueError("La muestra grafica no debe superar 5,000 registros.")
+    columns = [
+        *RECORD_KEYS,
+        LABEL,
+        "nivel_educativo",
+        "dominio",
+        *MODEL_COLUMNS.values(),
+    ]
+    sample = (
+        predictions.select(*columns)
+        .withColumn("_orden", F.xxhash64(*[F.col(k) for k in RECORD_KEYS], F.lit(SEED)))
+        .orderBy("_orden")
+        .limit(limit)
+        .drop("_orden")
+        .toPandas()
+    )
+    for model, column in MODEL_COLUMNS.items():
+        sample[f"residuo_{column}"] = sample[LABEL] - sample[column]
+    return sample
+
+
+def error_by_group(predictions: DataFrame, column: str) -> pd.DataFrame:
+    """MAE and mean error per group and model using every test record (no sampling)."""
+    table = (
+        _long_errors(predictions)
+        .groupBy("modelo", column)
+        .agg(
+            F.count("*").alias("n"),
+            F.avg("error_abs").alias("MAE"),
+            F.avg("residuo").alias("error_medio"),
+            F.avg(LABEL).alias("salario_promedio"),
+        )
+        .toPandas()
+        .rename(columns={column: "grupo"})
+    )
+    table["variable"] = column
+    if column == "nivel_educativo":
+        order = {name: i for i, name in enumerate(EDUCATION_ORDER)}
+        table["_o"] = table["grupo"].map(order).fillna(len(order))
+        table = table.sort_values(["modelo", "_o"]).drop(columns="_o")
+    else:
+        table = table.sort_values(["modelo", "grupo"])
+    table["tendencia"] = table["error_medio"].map(
+        lambda value: "subestima" if value > 0 else "sobreestima"
+    )
+    return table[
+        ["modelo", "variable", "grupo", "n", "MAE", "error_medio", "salario_promedio", "tendencia"]
+    ].reset_index(drop=True)
+
+
+def salary_percentile_bands(predictions: DataFrame) -> tuple[DataFrame, pd.DataFrame]:
+    """Label each test record with a band of the observed 2026T1 salary distribution.
+
+    Cut points come from the full test salary (approxQuantile, relative error 0.001).
+    Bands: <=P25, P25-P50, P50-P75, P75-P90, P90-P95 and >P95. The salary is
+    heavily tied at round values, so bands are closed on the right and the table
+    reports the real size of each band.
+    """
+    cuts = predictions.approxQuantile(LABEL, list(PERCENTILE_CUTS), 0.001)
+    labels = ["P00-P25", "P25-P50", "P50-P75", "P75-P90", "P90-P95", "P95-P100"]
+    expression = F.when(F.col(LABEL) <= F.lit(cuts[0]), labels[0])
+    for index in range(1, len(cuts)):
+        expression = expression.when(F.col(LABEL) <= F.lit(cuts[index]), labels[index])
+    expression = expression.otherwise(labels[-1])
+    thresholds = pd.DataFrame(
+        {
+            "banda": labels,
+            "salario_limite_superior": [*cuts, float("nan")],
+        }
+    )
+    return predictions.withColumn("banda_salarial", expression), thresholds
+
+
+def error_by_salary_band(banded: DataFrame, thresholds: pd.DataFrame) -> pd.DataFrame:
+    """MAE, mean error and share of underestimated records per salary band and model."""
+    table = (
+        _long_errors(banded.select(*banded.columns))
+        .join(banded.select(*RECORD_KEYS, "banda_salarial"), list(RECORD_KEYS), "inner")
+        .groupBy("modelo", "banda_salarial")
+        .agg(
+            F.count("*").alias("n"),
+            F.avg(LABEL).alias("salario_promedio"),
+            F.avg("prediccion").alias("prediccion_promedio"),
+            F.avg("error_abs").alias("MAE"),
+            F.avg("residuo").alias("error_medio"),
+            F.avg((F.col("residuo") > 0).cast("double")).alias("prop_subestimado"),
+        )
+        .toPandas()
+        .rename(columns={"banda_salarial": "banda"})
+    )
+    table = table.merge(thresholds, on="banda", how="left")
+    order = {name: i for i, name in enumerate(thresholds["banda"])}
+    table["_o"] = table["banda"].map(order)
+    table = table.sort_values(["modelo", "_o"]).drop(columns="_o")
+    table["error_medio_pct_salario"] = 100 * table["error_medio"] / table["salario_promedio"]
+    table["tendencia"] = table["error_medio"].map(
+        lambda value: "subestima" if value > 0 else "sobreestima"
+    )
+    return table.reset_index(drop=True)
+
+
+def residual_summary(predictions: DataFrame) -> pd.DataFrame:
+    """Global residual diagnostics on the full test set (both models)."""
+    return (
+        _long_errors(predictions)
+        .groupBy("modelo")
+        .agg(
+            F.count("*").alias("n"),
+            F.avg("residuo").alias("error_medio"),
+            F.avg("error_abs").alias("MAE"),
+            F.expr("percentile_approx(residuo, 0.5, 10000)").alias("residuo_mediano"),
+            F.avg((F.col("residuo") > 0).cast("double")).alias("prop_subestimado"),
+        )
+        .toPandas()
+        .sort_values("modelo")
+        .reset_index(drop=True)
+    )
