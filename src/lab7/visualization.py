@@ -153,3 +153,114 @@ def plot_model_comparison(comparison: pd.DataFrame) -> Path:
     ax.grid(axis="x")
     ax.grid(axis="y", visible=False)
     return _save(fig, "comparacion_modelos_validacion.png")
+
+
+# ---------------------------------------------------------------------------
+# Actividad 8: graficos de errores (muestra comun de hasta 5,000 registros)
+# ---------------------------------------------------------------------------
+
+MODEL_STYLE = {
+    "Regresión lineal": ("prediccion_lr", BLUE),
+    "Random Forest": ("prediccion_rf", TEAL),
+}
+
+
+def plot_actual_vs_predicted(sample: pd.DataFrame) -> Path:
+    """Salario real (eje y) frente a salario predicho (eje x) con la linea y = x."""
+    apply_theme()
+    limit = float(max(sample["salario_mensual"].max(), *(sample[c].max() for c, _ in MODEL_STYLE.values())))
+    fig, axes = plt.subplots(1, 2, figsize=(13, 5.8), sharex=True, sharey=True, constrained_layout=True)
+    for ax, (model, (column, color)) in zip(axes, MODEL_STYLE.items()):
+        ax.scatter(sample[column], sample["salario_mensual"], s=9, alpha=0.32, color=color, edgecolors="none")
+        ax.plot([0, limit], [0, limit], color=ORANGE, linewidth=2, label="y = x (prediccion perfecta)")
+        ax.set_title(model)
+        ax.set_xlabel("Salario predicho (Q)")
+        ax.set_xlim(0, limit * 1.02)
+        ax.set_ylim(0, limit * 1.02)
+        ax.grid(True)
+        ax.legend(loc="upper left")
+    axes[0].set_ylabel("Salario real (Q)")
+    fig.suptitle(f"Salario real vs. predicho en 2026T1 - misma muestra de {len(sample):,} registros", fontsize=15, weight="bold")
+    return _save(fig, "real_vs_predicho_2026.png")
+
+
+def plot_residuals(sample: pd.DataFrame) -> Path:
+    """Residuo (real - predicho) frente al salario predicho con linea horizontal en cero."""
+    apply_theme()
+    fig, axes = plt.subplots(1, 2, figsize=(13, 5.8), sharex=True, sharey=True, constrained_layout=True)
+    for ax, (model, (column, color)) in zip(axes, MODEL_STYLE.items()):
+        residual = sample["salario_mensual"] - sample[column]
+        ax.scatter(sample[column], residual, s=9, alpha=0.32, color=color, edgecolors="none")
+        ax.axhline(0, color=ORANGE, linewidth=2, label="residuo = 0")
+        ax.set_title(model)
+        ax.set_xlabel("Salario predicho (Q)")
+        ax.grid(True)
+        ax.legend(loc="upper left")
+    axes[0].set_ylabel("Residuo = real - predicho (Q)\n(positivo: subestima; negativo: sobreestima)")
+    fig.suptitle(f"Residuos vs. salario predicho en 2026T1 - misma muestra de {len(sample):,} registros", fontsize=15, weight="bold")
+    return _save(fig, "residuos_vs_predicho_2026.png")
+
+
+def _grouped_error_axes(table: pd.DataFrame, group_order: list[str], title: str, filename: str, xlabel: str) -> Path:
+    apply_theme()
+    fig, axes = plt.subplots(1, 2, figsize=(14, 5.6), constrained_layout=True)
+    positions = np.arange(len(group_order))
+    width = 0.38
+    for offset, (model, (_, color)) in zip((-width / 2, width / 2), MODEL_STYLE.items()):
+        data = table[table["modelo"] == model].set_index("grupo").reindex(group_order)
+        axes[0].bar(positions + offset, data["MAE"], width, color=color, alpha=0.9, label=model)
+        axes[1].bar(positions + offset, data["error_medio"], width, color=color, alpha=0.9, label=model)
+    axes[0].set_title("MAE por grupo")
+    axes[0].set_ylabel("MAE (Q)")
+    axes[1].set_title("Error medio (real - predicho)")
+    axes[1].set_ylabel("Error medio (Q): >0 subestima, <0 sobreestima")
+    axes[1].axhline(0, color=INK, linewidth=1)
+    counts = table[table["modelo"] == "Random Forest"].set_index("grupo").reindex(group_order)["n"]
+    labels = [f"{name}\n(n={int(counts[name]):,})" if pd.notna(counts[name]) else name for name in group_order]
+    for ax in axes:
+        ax.set_xticks(positions, labels, rotation=30, ha="right")
+        ax.set_xlabel(xlabel)
+        ax.grid(axis="y")
+        ax.grid(axis="x", visible=False)
+    axes[0].legend()
+    fig.suptitle(title, fontsize=15, weight="bold")
+    return _save(fig, filename)
+
+
+def plot_errors_by_education(table: pd.DataFrame) -> Path:
+    order = [g for g in table["grupo"].drop_duplicates()]
+    return _grouped_error_axes(table, order, "Errores por nivel educativo en 2026T1 (todos los registros de prueba)",
+                               "errores_por_educacion_2026.png", "Nivel educativo")
+
+
+def plot_errors_by_domain(table: pd.DataFrame) -> Path:
+    order = [g for g in table["grupo"].drop_duplicates()]
+    return _grouped_error_axes(table, order, "Errores por dominio en 2026T1 (todos los registros de prueba)",
+                               "errores_por_dominio_2026.png", "Dominio")
+
+
+def plot_errors_by_salary_band(table: pd.DataFrame) -> Path:
+    apply_theme()
+    bands = list(table["banda"].drop_duplicates())
+    fig, axes = plt.subplots(1, 2, figsize=(14, 5.6), constrained_layout=True)
+    positions = np.arange(len(bands))
+    width = 0.38
+    for offset, (model, (_, color)) in zip((-width / 2, width / 2), MODEL_STYLE.items()):
+        data = table[table["modelo"] == model].set_index("banda").reindex(bands)
+        axes[0].bar(positions + offset, data["MAE"], width, color=color, alpha=0.9, label=model)
+        axes[1].bar(positions + offset, data["error_medio"], width, color=color, alpha=0.9, label=model)
+    axes[0].set_title("MAE por banda del salario real")
+    axes[0].set_ylabel("MAE (Q)")
+    axes[1].set_title("Error medio (real - predicho) por banda")
+    axes[1].set_ylabel("Error medio (Q): >0 subestima, <0 sobreestima")
+    axes[1].axhline(0, color=INK, linewidth=1)
+    sizes = table[table["modelo"] == "Random Forest"].set_index("banda").reindex(bands)["n"]
+    labels = [f"{name}\n(n={int(sizes[name]):,})" if pd.notna(sizes[name]) else name for name in bands]
+    for ax in axes:
+        ax.set_xticks(positions, labels, rotation=30, ha="right")
+        ax.set_xlabel("Banda de percentil del salario real 2026T1")
+        ax.grid(axis="y")
+        ax.grid(axis="x", visible=False)
+    axes[0].legend()
+    fig.suptitle("Error segun el percentil del salario real (todos los registros de prueba)", fontsize=15, weight="bold")
+    return _save(fig, "errores_por_percentil_salarial_2026.png")
