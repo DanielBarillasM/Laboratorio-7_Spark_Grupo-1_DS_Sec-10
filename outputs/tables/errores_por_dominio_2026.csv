@@ -1,0 +1,7 @@
+modelo,variable,grupo,n,MAE,error_medio,salario_promedio,tendencia
+Random Forest,dominio,Resto Urbano,4846,1085.5537829087905,66.31519440831573,3281.6392901361946,subestima
+Random Forest,dominio,Rural Nacional,2780,813.6505781261563,-62.411692175440486,2467.73273381295,sobreestima
+Random Forest,dominio,Urbano Metropolitano,5632,1351.5005285938669,226.6808282808464,4352.307883522727,subestima
+Regresión lineal,dominio,Resto Urbano,4846,1189.6473203741455,134.2829063173896,3281.6392901361946,subestima
+Regresión lineal,dominio,Rural Nacional,2780,913.6389300865304,65.24288669390457,2467.73273381295,subestima
+Regresión lineal,dominio,Urbano Metropolitano,5632,1446.0925579320747,136.0360907214619,4352.307883522727,subestima

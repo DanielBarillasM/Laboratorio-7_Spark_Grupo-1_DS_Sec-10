@@ -1,0 +1,67 @@
+\subsection{Errores por nivel educativo}
+\begin{table}[htbp]\centering\footnotesize
+\begin{tabular}{lrrrrr}\toprule
+Nivel educativo & n & MAE RL & Err. medio RL & MAE RF & Err. medio RF \\ \midrule
+Ninguno & 1,016 & 823.51 & +109.34 & 708.92 & -197.02 \\
+Preprimaria & 80 & 735.21 & +88.76 & 661.81 & -192.45 \\
+Primaria & 3,957 & 870.04 & +54.56 & 777.34 & -6.77 \\
+Basico & 2,164 & 894.45 & +127.77 & 850.43 & +54.88 \\
+Diversificado & 4,117 & 1,109.31 & +103.98 & 1,045.38 & +200.09 \\
+Superior & 1,729 & 2,566.37 & +295.51 & 2,358.83 & +342.58 \\
+Maestria & 183 & 5,552.88 & -131.50 & 4,882.13 & +39.54 \\
+Doctorado & 12 & 12,919.31 & +6,062.70 & 14,088.18 & +10,397.51 \\
+\bottomrule\end{tabular}
+\caption{MAE y error medio (real $-$ predicho) por nivel educativo; RL = regresión lineal, RF = Random Forest.}
+\end{table}
+\begin{itemize}\setlength{\itemsep}{2pt}
+\item \textbf{Random Forest:} el mayor MAE por nivel educativo aparece en \textbf{Doctorado} (Q14,088.18, n=12). La mayor subestimación media ocurre en \textbf{Doctorado} (Q10,397.51) y la mayor sobreestimación ocurre en \textbf{Ninguno} (Q-197.02).
+\item \textbf{Regresión lineal:} el mayor MAE por nivel educativo aparece en \textbf{Doctorado} (Q12,919.31, n=12). La mayor subestimación media ocurre en \textbf{Doctorado} (Q6,062.70) y la mayor sobreestimación ocurre en \textbf{Maestria} (Q-131.50).
+\end{itemize}
+
+El grupo de nivel educativo con mayor salario promedio es \textbf{Doctorado} (Q20,291.67) y tambien concentra el mayor MAE absoluto; esto obliga a interpretar el MAE junto con la escala salarial y el numero de observaciones.
+
+\subsection{Errores por dominio}
+\begin{table}[htbp]\centering\footnotesize
+\begin{tabular}{lrrrrr}\toprule
+Dominio & n & MAE RL & Err. medio RL & MAE RF & Err. medio RF \\ \midrule
+Resto Urbano & 4,846 & 1,189.65 & +134.28 & 1,085.55 & +66.32 \\
+Rural Nacional & 2,780 & 913.64 & +65.24 & 813.65 & -62.41 \\
+Urbano Metropolitano & 5,632 & 1,446.09 & +136.04 & 1,351.50 & +226.68 \\
+\bottomrule\end{tabular}
+\caption{MAE y error medio (real $-$ predicho) por dominio; RL = regresión lineal, RF = Random Forest.}
+\end{table}
+\begin{itemize}\setlength{\itemsep}{2pt}
+\item \textbf{Random Forest:} el mayor MAE por dominio aparece en \textbf{Urbano Metropolitano} (Q1,351.50, n=5,632). La mayor subestimación media ocurre en \textbf{Urbano Metropolitano} (Q226.68) y la mayor sobreestimación ocurre en \textbf{Rural Nacional} (Q-62.41).
+\item \textbf{Regresión lineal:} el mayor MAE por dominio aparece en \textbf{Urbano Metropolitano} (Q1,446.09, n=5,632). La mayor subestimación media ocurre en \textbf{Urbano Metropolitano} (Q136.04) y todos los grupos presentan subestimación media; la menor aparece en \textbf{Rural Nacional} (Q65.24).
+\end{itemize}
+
+El grupo de dominio con mayor salario promedio es \textbf{Urbano Metropolitano} (Q4,352.31) y tambien concentra el mayor MAE absoluto; esto obliga a interpretar el MAE junto con la escala salarial y el numero de observaciones.
+
+\subsection{Errores según el percentil del salario real}
+\begin{table}[htbp]\centering\footnotesize
+\begin{tabular}{lrrrrrrr}\toprule
+Banda & n & Salario prom. & MAE RL & Err. RL & MAE RF & Err. RF & RF subestima \\ \midrule
+P00-P25 & 4,032 & 1,298 & 998 & -829 & 928 & -868 & 10.9\% \\
+P25-P50 & 2,715 & 2,738 & 852 & -161 & 701 & -209 & 42.5\% \\
+P50-P75 & 3,188 & 3,769 & 831 & -80 & 691 & -26 & 60.5\% \\
+P75-P90 & 2,072 & 4,889 & 1,178 & +486 & 1,200 & +551 & 75.3\% \\
+P90-P95 & 608 & 7,225 & 2,076 & +1,634 & 2,048 & +1,644 & 88.3\% \\
+P95-P100 & 643 & 12,553 & 5,848 & +5,645 & 5,524 & +5,341 & 94.4\% \\
+\bottomrule\end{tabular}
+\caption{Error por banda del salario real de 2026T1 (todos los registros de prueba); error = real $-$ predicho.}
+\end{table}
+\begin{itemize}\setlength{\itemsep}{2pt}
+\item \textbf{Random Forest:} en P00-P25 el error medio es Q-868.49; en P95-P100 asciende a Q5,341.04, con MAE Q5,524.16 y 94.4\% de registros subestimados.
+\item \textbf{Regresión lineal:} en P00-P25 el error medio es Q-828.73; en P95-P100 asciende a Q5,645.34, con MAE Q5,848.39 y 94.4\% de registros subestimados.
+\end{itemize}
+
+\textbf{Salarios bajos, medios y altos.} \textbf{RF\_50\_arboles\_d7} es el mejor modelo global por RMSE. Sin embargo, en P95-P100 todavia presenta un error medio de Q5,341.04 y un MAE de Q5,524.16; por tanto, una mejora promedio no elimina la dificultad de representar la cola salarial.
+
+\subsection{Respuestas a las preguntas de la actividad}
+\begin{itemize}\setlength{\itemsep}{2pt}
+\item \textbf{Algoritmo con mejor generalizacion:} RF\_50\_arboles\_d7, con RMSE Q2,050.55 y $R^2$=0.4887, frente a RMSE Q2,163.75 del otro algoritmo.
+\item \textbf{Nivel educativo con mayor error observado:} Doctorado para Random Forest (MAE Q14,088.18, n=12).
+\item \textbf{Dominio con mayor error observado:} Urbano Metropolitano para Regresión lineal (MAE Q1,446.09, n=5,632).
+\item \textbf{Banda mas dificil:} P95-P100 para Regresión lineal (MAE Q5,848.39). Los errores medios positivos en la cola alta indican subestimacion sistematica de salarios altos.
+\item \textbf{Lectura correcta:} las diferencias son predictivas y descriptivas; no prueban causalidad ni determinan cuanto deberia ganar una persona.
+\end{itemize}

@@ -196,7 +196,9 @@ def build() -> None:
     lines.append(r"\subsection{Comparación de modelos en 2025T4}")
     lines += table(["Modelo", "MAE (Q)", "RMSE (Q)", "$R^2$"], rows, "lrrr",
                    "Métricas no ponderadas sobre el mismo conjunto de validación.")
-    (REPORTS / "generated_results.tex").write_text("\n".join(lines) + "\n", encoding="utf-8")
+    (REPORTS / "generated_results.tex").write_text(
+        "\n".join(lines).rstrip() + "\n", encoding="utf-8"
+    )
 
     # ---- Actividad 7: evaluacion final ----------------------------------------------------
     rows = [
@@ -229,7 +231,9 @@ def build() -> None:
         f"ganador reduce ese RMSE en {improvement:.2f}%. El ganador de validación {same} con el de prueba."
     )
     lines += ["", blocks(interpretation)]
-    (REPORTS / "generated_test.tex").write_text("\n".join(lines) + "\n", encoding="utf-8")
+    (REPORTS / "generated_test.tex").write_text(
+        "\n".join(lines).rstrip() + "\n", encoding="utf-8"
+    )
 
     # ---- Actividad 8: errores ---------------------------------------------------------------
     lines = [r"\subsection{Errores por nivel educativo}"]
@@ -269,15 +273,20 @@ def build() -> None:
         for model, row in residuals.iterrows()
     )
     reading = (TABLES / "interpretacion_graficos_2026.txt").read_text(encoding="utf-8")
-    (REPORTS / "generated_plots.tex").write_text(
-        blocks("**Resultados globales (todo el test).**\n\n" + global_lines + "\n\n"
-               "**Lo que muestran las gráficas (muestra común de 5,000 registros).**\n\n" + reading) + "\n",
-        encoding="utf-8",
+    plot_text = blocks(
+        "**Resultados globales (todo el test).**\n\n" + global_lines + "\n\n"
+        "**Lo que muestran las gráficas (muestra común de 5,000 registros).**\n\n" + reading
     )
-    (REPORTS / "generated_errors.tex").write_text("\n".join(lines) + "\n", encoding="utf-8")
+    (REPORTS / "generated_plots.tex").write_text(
+        plot_text.rstrip() + "\n", encoding="utf-8"
+    )
+    (REPORTS / "generated_errors.tex").write_text(
+        "\n".join(lines).rstrip() + "\n", encoding="utf-8"
+    )
 
+    conclusion_text = blocks(words.final_discussion(test_metrics, education, domain, bands))
     (REPORTS / "generated_conclusions.tex").write_text(
-        blocks(words.final_discussion(test_metrics, education, domain, bands)) + "\n", encoding="utf-8"
+        conclusion_text.rstrip() + "\n", encoding="utf-8"
     )
     print("Fragmentos generados en", REPORTS)
 

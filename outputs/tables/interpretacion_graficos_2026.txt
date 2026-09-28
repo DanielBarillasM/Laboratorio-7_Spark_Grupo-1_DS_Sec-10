@@ -1,0 +1,2 @@
+- **Regresion lineal:** en la muestra, el residuo medio es Q105.62; para salarios reales desde el percentil 90 es Q3,282.91. La dispersion crece con el nivel salarial, por lo que los errores no tienen varianza constante.
+- **Random Forest:** en la muestra, el residuo medio es Q95.47; para salarios reales desde el percentil 90 es Q3,202.76. La dispersion crece con el nivel salarial, por lo que los errores no tienen varianza constante.

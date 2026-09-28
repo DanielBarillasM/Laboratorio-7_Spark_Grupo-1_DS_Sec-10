@@ -1,0 +1,31 @@
+\begin{table}[htbp]\centering\footnotesize
+\begin{tabular}{llrrrr}\toprule
+Modelo & Configuración & Registros & MAE (Q) & RMSE (Q) & $R^2$ \\ \midrule
+RF\_50\_arboles\_d7 & numTrees=50, maxDepth=7 & 13,258 & 1,141.51 & 2,050.55 & 0.4887 \\
+LR\_sin\_regularizacion & regParam=0.0, elasticNetParam=0.0 & 13,258 & 1,240.71 & 2,163.75 & 0.4307 \\
+Referencia: media 2025 & media salarial 2025 completo & 13,258 & 1,718.09 & 2,871.42 & -0.0025 \\
+\bottomrule\end{tabular}
+\caption{Métricas en 2026T1, no ponderadas y calculadas sobre todo el conjunto de prueba.}
+\end{table}
+\begin{table}[htbp]\centering\small
+\begin{tabular}{lr}\toprule
+Conjunto & Registros \\ \midrule
+Test elegible 2026T1 & 13,258 \\
+Predicciones LR\_sin\_regularizacion & 13,258 \\
+Predicciones RF\_50\_arboles\_d7 & 13,258 \\
+Registros compartidos (join por clave) & 13,258 \\
+Claves distintas compartidas & 13,258 \\
+\bottomrule\end{tabular}
+\caption{Ambos modelos se evalúan sobre exactamente los mismos registros (misma clave y mismo conteo).}
+\end{table}
+\begin{table}[htbp]\centering\footnotesize
+\begin{tabular}{lrrrr}\toprule
+Modelo & RMSE 2025T4 & RMSE 2026T1 & Cambio & Mejora vs. referencia \\ \midrule
+RF\_50\_arboles\_d7 & 2,074.15 & 2,050.55 & -23.60 & 28.59\% \\
+LR\_sin\_regularizacion & 2,186.42 & 2,163.75 & -22.67 & 24.65\% \\
+Referencia: media 2025 & 2,889.57 & 2,871.42 & -18.15 & 0.00\% \\
+\bottomrule\end{tabular}
+\caption{Estabilidad temporal del RMSE y mejora frente a la referencia de la media de 2025.}
+\end{table}
+
+En 2026T1, \textbf{RF\_50\_arboles\_d7} obtuvo el menor error (MAE Q1,141.51, RMSE Q2,050.55, $R^2$ 0.4887); el otro algoritmo, \textbf{LR\_sin\_regularizacion}, obtuvo MAE Q1,240.71, RMSE Q2,163.75 y $R^2$ 0.4307. La referencia (media de 2025) tiene RMSE Q2,871.42 y $R^2$ -0.0025, y el ganador reduce ese RMSE en 28.59\%. El ganador de validación coincide con el de prueba.

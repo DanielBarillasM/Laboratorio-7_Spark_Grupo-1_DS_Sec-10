@@ -1,0 +1,198 @@
+\documentclass[11pt,letterpaper]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage{geometry}
+\usepackage{xcolor}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{tabularx}
+
+\geometry{margin=2.1cm,headheight=15pt}
+\definecolor{Navy}{HTML}{172033}
+\definecolor{Blue}{HTML}{2563EB}
+\definecolor{Cyan}{HTML}{06B6D4}
+\definecolor{Pale}{HTML}{EFF6FF}
+\graphicspath{{../outputs/figures/}}
+\pagestyle{plain}
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{6pt}
+\setlength{\emergencystretch}{3em}
+
+\newcommand{\resultbox}[1]{%
+  \colorbox{Pale}{\parbox{0.94\textwidth}{\vspace{5pt}#1\vspace{5pt}}}%
+}
+
+\begin{document}
+
+\begin{titlepage}
+\pagecolor{Navy}
+\color{white}
+\vspace*{1.0cm}
+{\small\bfseries UNIVERSIDAD DEL VALLE DE GUATEMALA}\par
+\vspace{2.0cm}
+{\Huge\bfseries Laboratorio 7}\par
+\vspace{0.2cm}
+{\fontsize{30}{34}\selectfont Spark MLlib}\par
+\vspace{0.7cm}
+{\Large Perfiles laborales y predicción salarial con ENEIC}\par
+\vspace{1.2cm}
+\colorbox{Blue}{\parbox{0.88\textwidth}{\color{white}\centering\large Entrega final · Actividades 1--8 completas}}
+\vfill
+\begin{tabularx}{\textwidth}{X r}
+\textbf{Jorge Gabriel Palacios Sales} & 231385\\[6pt]
+\textbf{Pablo Daniel Barillas Moreno} & 22193\\[6pt]
+\textbf{Roberto Emiliano Otoniel} & 23968\\
+\end{tabularx}
+\vspace{1cm}
+CC3084 · Data Science · Sección 10 · Grupo 1\\
+Segundo semestre 2026
+\vspace*{0.7cm}
+\end{titlepage}
+\nopagecolor
+\color{Navy}
+
+\section{Resumen ejecutivo}
+
+Se desarrolló un flujo reproducible con Python 3.11, Spark 3.5.1 y
+\texttt{pyspark.ml}. El estudio armoniza las bases de Personas ENEIC,
+identifica perfiles mediante KMeans y compara regresión lineal con Random
+Forest para estimar el salario mensual. La selección se realizó con 2025T4;
+después, las configuraciones ganadoras se reentrenaron con todo 2025 y se
+evaluaron una sola vez en 2026T1.
+
+\input{generated_results.tex}
+
+\section{Datos, trazabilidad y preparación}
+
+Cada Excel se procesó por separado con \texttt{openpyxl}; únicamente las
+variables requeridas se convirtieron a Spark con esquema explícito y se
+guardaron en Parquet. Se conservaron \texttt{TRIMESTRE},
+\texttt{archivo\_origen}, \texttt{periodo\_archivo}, año y trimestre
+calendario. Los cuatro archivos de 2025 se combinaron con
+\texttt{unionByName}, porque 2025T4 contiene 302 columnas y los otros cortes
+270.
+
+La población analítica incluye personas de al menos 15 años, ocupadas,
+asalariadas según los códigos 1--4, con salario positivo y finito,
+antigüedad coherente y jornada habitual entre 1 y 168 horas. No se imputó,
+recortó ni transformó el salario objetivo. Los códigos ausentes o no
+reconocidos se trataron como \texttt{DESCONOCIDO}; educación 0 se mantuvo
+como \emph{Ninguno}.
+
+\section{Exploración y relaciones}
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.96\textwidth]{distribuciones_categoricas.png}
+\caption{Composición de los registros elegibles de 2025.}
+\end{figure}
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.96\textwidth]{distribucion_salario.png}
+\caption{Distribución salarial; la escala logarítmica se usa únicamente para visualizar.}
+\end{figure}
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.90\textwidth]{salario_mediano_grupos.png}
+\caption{Salario mediano por educación y categoría ocupacional.}
+\end{figure}
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.78\textwidth]{correlaciones_pearson.png}
+\caption{Correlaciones de Pearson calculadas sobre todos los registros elegibles de 2025.}
+\end{figure}
+
+\section{Segmentación y validación de modelos}
+
+KMeans comparó $K=2,3,4,5$ con variables estandarizadas, tanto con un perfil
+laboral sin salario como con un perfil económico que sí lo incorpora. Para el
+modelado supervisado se utilizaron exactamente edad, antigüedad, horas
+semanales, educación, categoría ocupacional y dominio.
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.82\textwidth]{seleccion_kmeans.png}
+\caption{Selección de K y sensibilidad a incluir el salario.}
+\end{figure}
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.86\textwidth]{comparacion_modelos_validacion.png}
+\caption{Comparación de RMSE en validación temporal 2025T4.}
+\end{figure}
+
+\section{Evaluación final en 2026T1}
+
+Los pipelines completos se reajustaron con 2025T1--T4. Ambos modelos se
+evaluaron sobre las mismas claves elegibles de 2026T1, sin seleccionar de
+nuevo hiperparámetros.
+
+\input{generated_test.tex}
+
+\section{Visualización y análisis de errores}
+
+Se definió el residuo como salario real menos salario predicho: un valor
+positivo indica subestimación y uno negativo, sobreestimación. Los diagramas
+usan la misma muestra reproducible de 5,000 registros; las métricas por grupo
+se calcularon con el test completo.
+
+\input{generated_plots.tex}
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=\textwidth]{real_vs_predicho_2026.png}
+\caption{Salario real frente a predicho con referencia $y=x$.}
+\end{figure}
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=\textwidth]{residuos_vs_predicho_2026.png}
+\caption{Residuos frente a predicción con referencia horizontal en cero.}
+\end{figure}
+
+\input{generated_errors.tex}
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=\textwidth]{errores_por_educacion_2026.png}
+\caption{MAE y error medio por nivel educativo sobre todo el test.}
+\end{figure}
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=\textwidth]{errores_por_dominio_2026.png}
+\caption{MAE y error medio por dominio sobre todo el test.}
+\end{figure}
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=\textwidth]{errores_por_percentil_salarial_2026.png}
+\caption{Error según bandas del salario real de 2026T1.}
+\end{figure}
+
+\section{Conclusiones y limitaciones}
+
+\input{generated_conclusions.tex}
+
+Los resultados son no ponderados y describen solamente los registros
+elegibles analizados. No constituyen estimaciones oficiales de la población
+guatemalteca ni evidencian relaciones causales. \texttt{FACTOR} se conservó
+para documentar el diseño y permitir un análisis poblacional posterior.
+
+\section{Reproducibilidad y fuente}
+
+El notebook se ejecuta de principio a fin, fija semilla 42, mantiene 2026
+fuera de la selección y limita pandas a agregados o a la muestra gráfica
+permitida. Los Excel, Parquet y modelos se mantienen fuera de Git por tamaño;
+el README documenta sus rutas y dependencias.
+
+Instituto Nacional de Estadística de Guatemala. \emph{Encuesta Nacional de
+Empleo e Ingresos Continua (ENEIC)}, bases de Personas 2025--2026.\\
+\texttt{https://www.ine.gob.gt/encuesta-nacional-de-empleo-e-ingresos/}
+
+\end{document}

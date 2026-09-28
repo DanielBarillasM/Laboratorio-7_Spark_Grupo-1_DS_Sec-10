@@ -2,6 +2,7 @@
 
 from pathlib import Path
 import csv
+import json
 import sys
 
 import pytest
@@ -136,3 +137,38 @@ def test_final_models_were_saved():
     for name in (FINAL_LINEAR_MODEL, FINAL_FOREST_MODEL):
         assert (MODEL_DIR / name / "metadata").exists(), name
         assert (MODEL_DIR / name / "stages").exists(), name
+
+
+def test_final_notebook_is_fully_executed_without_errors():
+    notebook_path = ROOT / "notebooks" / "Laboratorio_7_Spark_MLlib_Final.ipynb"
+    notebook = json.loads(notebook_path.read_text(encoding="utf-8"))
+    code_cells = [cell for cell in notebook["cells"] if cell["cell_type"] == "code"]
+    assert [cell["execution_count"] for cell in code_cells] == list(
+        range(1, len(code_cells) + 1)
+    )
+    errors = [
+        output
+        for cell in code_cells
+        for output in cell.get("outputs", [])
+        if output.get("output_type") == "error"
+    ]
+    assert not errors
+
+
+def test_activity_8_and_final_documents_exist():
+    required = [
+        "outputs/tables/errores_por_educacion_2026.csv",
+        "outputs/tables/errores_por_dominio_2026.csv",
+        "outputs/tables/errores_por_percentil_salarial_2026.csv",
+        "outputs/tables/resumen_residuos_2026.csv",
+        "outputs/figures/real_vs_predicho_2026.png",
+        "outputs/figures/residuos_vs_predicho_2026.png",
+        "outputs/figures/errores_por_educacion_2026.png",
+        "outputs/figures/errores_por_dominio_2026.png",
+        "outputs/figures/errores_por_percentil_salarial_2026.png",
+        "reports/informe_final.tex",
+        "reports/informe_final.pdf",
+        "ficha_repositorio/Ficha_Repositorio_Laboratorio_7.pdf",
+    ]
+    missing = [relative for relative in required if not (ROOT / relative).exists()]
+    assert not missing

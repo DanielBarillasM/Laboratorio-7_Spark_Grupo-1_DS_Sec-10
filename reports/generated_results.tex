@@ -2,7 +2,8 @@
 Después de aplicar los criterios de elegibilidad se conservaron \textbf{53,025} registros de 2025. El salario medio fue \textbf{Q3,421.68} y la mediana \textbf{Q3,000.00}; esta separación evidencia asimetría y la influencia de valores altos.
 La asociación lineal absoluta más alta con salario entre los predictores numéricos corresponde a \texttt{antiguedad} ($|r|=0.180$).
 KMeans seleccionó \textbf{Perfil laboral (sin salario)} con $K=2$ y silhouette 0.5545.
-En validación temporal, \textbf{RF\_50\_arboles\_d7} obtuvo el menor RMSE (Q2,074.15), con MAE Q1,109.94 y $R^2=0.4831$. La prueba 2026 permanece reservada.
+En validación temporal (2025T4), \textbf{RF\_50\_arboles\_d7} obtuvo el menor RMSE (Q2,074.15).
+En la prueba final (2026T1, 13,258 registros), \textbf{RF\_50\_arboles\_d7} obtuvo el mejor desempeño: MAE Q1,141.51, RMSE Q2,050.55 y $R^2=0.4887$.
 \subsection{Retención por período}
 \begin{table}[htbp]\centering\small
 \begin{tabular}{lrrrr}\toprule
@@ -20,7 +21,7 @@ Período & Antes & Después & Excluidos & Retención \\ \midrule
 Variable & Media & Mediana & DE & P25 & P75 & P95 \\ \midrule
 salario\_mensual & 3,421.68 & 3,000.00 & 2,902.11 & 1,800.00 & 4,000.00 & 8,000.00 \\
 edad & 35.19 & 33.00 & 13.52 & 24.00 & 44.00 & 61.00 \\
-antiguedad & 5.56 & 2.00 & 7.83 & 0.50 & 7.00 & 21.42 \\
+antiguedad & 5.56 & 2.00 & 7.83 & 0.50 & 7.00 & 21.33 \\
 horas\_semanales & 46.31 & 45.00 & 18.63 & 40.00 & 55.00 & 80.00 \\
 \bottomrule\end{tabular}
 \caption{Estadísticas calculadas sobre todos los registros elegibles de 2025.}

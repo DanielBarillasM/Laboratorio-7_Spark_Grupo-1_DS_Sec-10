@@ -1,0 +1,17 @@
+modelo,variable,grupo,n,MAE,error_medio,salario_promedio,tendencia
+Random Forest,nivel_educativo,Ninguno,1016,708.9159056001513,-197.024756309149,1884.1358267716535,sobreestima
+Random Forest,nivel_educativo,Preprimaria,80,661.8124181661099,-192.44850276151942,2374.5625,sobreestima
+Random Forest,nivel_educativo,Primaria,3957,777.3423850572983,-6.765925958267629,2422.7470305787215,sobreestima
+Random Forest,nivel_educativo,Basico,2164,850.4284603689423,54.88149549511936,2905.4551756007395,subestima
+Random Forest,nivel_educativo,Diversificado,4117,1045.3756306242776,200.09061779780242,3924.2390089871265,subestima
+Random Forest,nivel_educativo,Superior,1729,2358.8313688290773,342.5843685788011,6264.3597455176405,subestima
+Random Forest,nivel_educativo,Maestria,183,4882.128907890312,39.54122540614329,11290.639344262296,subestima
+Random Forest,nivel_educativo,Doctorado,12,14088.179885387988,10397.508927793326,20291.666666666668,subestima
+Regresión lineal,nivel_educativo,Ninguno,1016,823.5131164082705,109.34029889060467,1884.1358267716535,subestima
+Regresión lineal,nivel_educativo,Preprimaria,80,735.2063474690456,88.76187301928879,2374.5625,subestima
+Regresión lineal,nivel_educativo,Primaria,3957,870.0358173744414,54.55535903378572,2422.7470305787215,subestima
+Regresión lineal,nivel_educativo,Basico,2164,894.4514830552863,127.76970455270762,2905.4551756007395,subestima
+Regresión lineal,nivel_educativo,Diversificado,4117,1109.314246627638,103.97732071280419,3924.2390089871265,subestima
+Regresión lineal,nivel_educativo,Superior,1729,2566.3704572105753,295.51403868183894,6264.3597455176405,subestima
+Regresión lineal,nivel_educativo,Maestria,183,5552.879063507152,-131.50427745870817,11290.639344262296,sobreestima
+Regresión lineal,nivel_educativo,Doctorado,12,12919.309265966616,6062.70355189002,20291.666666666668,subestima
