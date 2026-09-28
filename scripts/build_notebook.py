@@ -8,7 +8,7 @@ import nbformat as nbf
 
 
 ROOT = Path(__file__).resolve().parents[1]
-NOTEBOOK = ROOT / "notebooks" / "Laboratorio_7_Spark_MLlib_Avance.ipynb"
+NOTEBOOK = ROOT / "notebooks" / "Laboratorio_7_Spark_MLlib_Final.ipynb"
 
 
 def md(text: str):
@@ -20,7 +20,7 @@ def code(text: str):
 
 
 def build() -> None:
-    notebook = nbf.read(NOTEBOOK, as_version=4)
+    notebook = nbf.v4.new_notebook()
     notebook.metadata.update(
         {
             "kernelspec": {
@@ -29,7 +29,7 @@ def build() -> None:
                 "name": "python3",
             },
             "language_info": {"name": "python", "version": "3.11"},
-            "lab7": {"scope": "actividades_1_a_7", "seed": 42},
+            "lab7": {"scope": "actividades_1_a_8", "seed": 42},
         }
     )
     notebook.cells = [
@@ -50,7 +50,7 @@ table { font-size:13px !important; }
 
 <div class="lab-hero">
   <h1>Laboratorio 7 · Spark MLlib</h1>
-  <p><b>Actividades 1–7: exploración, segmentación, modelado y evaluación en 2026</b> · ENEIC Personas 2025–2026</p>
+  <p><b>Actividades 1–8: exploración, segmentación, modelado, evaluación en 2026 y análisis de errores</b> · ENEIC Personas 2025–2026</p>
   <p>Universidad del Valle de Guatemala · CC3084 Data Science · Sección 10 · Grupo 1 · Segundo semestre 2026</p>
 </div>
 
@@ -67,7 +67,7 @@ table { font-size:13px !important; }
 
 Este notebook identifica perfiles de trabajadores asalariados y evalúa qué tan bien puede estimarse su salario mensual mediante Spark 3.5.1 y `pyspark.ml`. El procedimiento conserva la trazabilidad por archivo, evita interpretar asociaciones como causalidad y calcula las métricas sobre los conjuntos completos.
 
-**Alcance ejecutado:** actividades 1–7. El análisis exhaustivo de errores (actividad 8) se construye sobre las predicciones de 2026 que deja guardadas la sección 7.
+**Alcance ejecutado:** actividades 1–8. La sección 8 analiza los errores sobre las predicciones de 2026T1 que deja guardadas la sección 7.
 
 **Diseño temporal:** 2025T1–2025T3 se utilizan para entrenamiento; 2025T4 para validación y selección. Después, cada configuración ganadora se reentrena con los cuatro trimestres de 2025 y se evalúa una sola vez en 2026T1. 2026T1 nunca se consulta para escoger configuraciones.
 """
@@ -78,7 +78,7 @@ from pathlib import Path
 import platform
 import sys
 
-from IPython.display import HTML, Image, display
+from IPython.display import HTML, Image, Markdown, display
 import pandas as pd
 import pyspark
 from pyspark.sql import SparkSession, functions as F
@@ -98,17 +98,25 @@ from lab7.data import (
     missingness_before_filters, observed_source_quarters, save_prepared_sets,
 )
 from lab7.analysis import (
-    categorical_distribution, descriptive_statistics, kmeans_search,
-    median_salary_by, pearson_correlation, quarterly_summary, salary_plot_sample,
+    categorical_distribution, descriptive_statistics, error_by_group,
+    error_by_salary_band, kmeans_search, load_test_predictions, median_salary_by,
+    pearson_correlation, plot_comparison_sample, quarterly_summary,
+    residual_summary, salary_percentile_bands, salary_plot_sample,
+)
+from lab7.interpretation import (
+    band_context, band_findings, final_discussion, group_findings,
+    plot_findings, question_answers, salary_scale_sentence,
 )
 from lab7.modeling import (
-    baseline_metrics, comparison_table, final_comparison_table, final_stage_plan,
+    baseline_metrics, comparison_table, final_comparison_table,
     fit_final_models, fit_linear_candidates, fit_random_forest_candidates,
 )
 from lab7.visualization import (
-    plot_categorical_distributions, plot_correlation_heatmap,
-    plot_group_medians, plot_kmeans_selection, plot_model_comparison,
-    plot_quarterly_summary, plot_salary_distribution,
+    plot_actual_vs_predicted, plot_categorical_distributions,
+    plot_correlation_heatmap, plot_errors_by_domain, plot_errors_by_education,
+    plot_errors_by_salary_band, plot_group_medians, plot_kmeans_selection,
+    plot_model_comparison, plot_quarterly_summary, plot_residuals,
+    plot_salary_distribution,
 )
 
 ensure_directories()
@@ -409,39 +417,184 @@ Estas métricas describen los registros elegibles analizados; no son estimacione
 '''))
 """
         ),
-        md("## Estado de las actividades"),
+        md(
+            """
+## 8. Visualización y análisis de errores
+
+Esta sección **no reentrena ni vuelve a seleccionar nada**: lee las predicciones de 2026T1 que guardó la sección 7 (una fila por registro de prueba, con la predicción de ambos modelos) y estudia dónde se equivocan.
+
+- **Residuo = salario real − salario predicho.** Un residuo **positivo** indica **subestimación** (el modelo predijo menos de lo observado); uno **negativo** indica **sobreestimación**.
+- Los gráficos usan **una misma muestra reproducible de 5,000 registros** (orden por un hash de la clave del registro con semilla 42) para poder comparar ambos modelos sobre los mismos puntos.
+- **Todas las tablas y métricas por grupo se calculan con los 13 mil y tantos registros completos de prueba**, no con la muestra gráfica, y no están ponderadas.
+"""
+        ),
         code(
             """
-pending = final_stage_plan()
-display(HTML("<div class='lab-pending'><b>Pendiente (actividad 8)</b><ol>" + "".join(f"<li>{item}</li>" for item in pending) + "</ol></div>"))
+predictions_2026 = load_test_predictions(spark).cache()
+n_predictions = predictions_2026.count()
+n_keys = predictions_2026.select("periodo_archivo", "NUM_HOGAR", "NUM_PERSONA").distinct().count()
+assert n_predictions == n_keys == test_2026.count(), "Las predicciones deben cubrir exactamente el test 2026"
 
-progress = pd.DataFrame([
-    ("1. Carga, armonizacion y calidad", "Completo"),
-    ("2. Estadistica descriptiva", "Completo"),
-    ("3. Correlaciones", "Completo"),
-    ("4. KMeans", "Completo"),
-    ("5. Regresion lineal", "Completo"),
-    ("6. Random Forest", "Completo"),
-    ("7. Evaluacion final 2026", "Completo"),
-    ("8. Analisis de errores", "Pendiente"),
-], columns=["actividad", "estado"])
-display(progress)
-progress.to_csv(TABLES_DIR / "estado_avance.csv", index=False)
+# Coherencia con la sección 7: las métricas recalculadas desde el Parquet deben coincidir.
+recomputed = residual_summary(predictions_2026)
+for algorithm, column in (("Regresión lineal", "prediccion_lr"), ("Random Forest", "prediccion_rf")):
+    mae_here = float(recomputed.loc[recomputed["modelo"] == algorithm, "MAE"].iloc[0])
+    row = test_metrics[test_metrics["modelo"].str.startswith("LR" if column == "prediccion_lr" else "RF")].iloc[0]
+    assert abs(mae_here - float(row["MAE"])) < 1e-6, f"MAE inconsistente para {algorithm}"
+
+plot_sample = plot_comparison_sample(predictions_2026, 5_000)
+assert len(plot_sample) <= 5_000
+plot_actual_vs_predicted(plot_sample)
+plot_residuals(plot_sample)
+recomputed.to_csv(TABLES_DIR / "resumen_residuos_2026.csv", index=False)
+
+display(HTML(f"<h4>Registros de prueba: {n_predictions:,} (mismas claves para ambos modelos) · muestra gráfica: {len(plot_sample):,}</h4>"))
+display(HTML("<h4>Residuos globales sobre todo el test (residuo = real − predicho)</h4>"))
+display(recomputed.style.format({"error_medio": "{:,.2f}", "MAE": "{:,.2f}", "residuo_mediano": "{:,.2f}", "prop_subestimado": "{:.1%}"}))
+display(Image(filename=str(FIGURES_DIR / "real_vs_predicho_2026.png")))
+display(Image(filename=str(FIGURES_DIR / "residuos_vs_predicho_2026.png")))
+"""
+        ),
+        code(
+            """
+summary = recomputed.set_index("modelo")
+plot_reading = plot_findings(plot_sample)
+(TABLES_DIR / "interpretacion_graficos_2026.txt").write_text(plot_reading, encoding="utf-8")
+lines = []
+for model in summary.index:
+    mean_error = float(summary.loc[model, "error_medio"])
+    lines.append(
+        f"- **{model}:** error medio global {mean_error:+,.2f} Q "
+        f"({'subestima' if mean_error > 0 else 'sobreestima'} en promedio); "
+        f"subestima al {summary.loc[model, 'prop_subestimado']:.1%} de los registros."
+    )
+display(Markdown(
+    "### Interpretación de los gráficos de predicción y residuos\\n\\n"
+    "**Cómo leerlos.** En el gráfico real vs. predicho, una predicción perfecta caería sobre la línea y = x: "
+    "los puntos **por encima** de la línea son salarios reales mayores que la predicción (subestimación) y los "
+    "puntos por debajo son sobreestimaciones. En el gráfico de residuos, la línea en cero separa subestimación "
+    "(arriba) de sobreestimación (abajo); una nube sin estructura alrededor de cero indicaría un ajuste sin sesgo "
+    "sistemático.\\n\\n"
+    "**Resultados globales (todo el test).**\\n\\n" + "\\n".join(lines) + "\\n\\n"
+    "**Lo que muestran las gráficas (muestra común de 5,000 registros).**\\n\\n" + plot_reading + "\\n\\n"
+    "_Estas lecturas usan la muestra gráfica; las métricas y tablas por grupo se calculan con todo el test._"
+))
 """
         ),
         md(
             """
-## Conclusiones provisionales
+### 8.1 Errores por nivel educativo y por dominio
 
-El flujo va de los Excel oficiales a Parquet, documenta el efecto de cada filtro, responde la exploración solicitada, compara alternativas de segmentación y selecciona configuraciones supervisadas usando solo 2025T4. La evaluación en 2026T1 se hizo una única vez, con los modelos reentrenados en todo 2025 y sobre exactamente los mismos registros. Las métricas son deliberadamente no ponderadas, por lo que no son estimaciones oficiales. Falta estudiar dónde se concentran los errores, especialmente en salarios altos (actividad 8).
+Para cada grupo se reportan el **número de observaciones**, el **MAE** y el **error medio** (real − predicho; positivo = subestima) con todos los registros de prueba.
 """
         ),
         code(
             """
+by_education = error_by_group(predictions_2026, "nivel_educativo")
+by_domain = error_by_group(predictions_2026, "dominio")
+by_education.to_csv(TABLES_DIR / "errores_por_educacion_2026.csv", index=False)
+by_domain.to_csv(TABLES_DIR / "errores_por_dominio_2026.csv", index=False)
+plot_errors_by_education(by_education)
+plot_errors_by_domain(by_domain)
+
+fmt = {"n": "{:,}", "MAE": "{:,.2f}", "error_medio": "{:,.2f}", "salario_promedio": "{:,.2f}"}
+display(HTML("<h4>Por nivel educativo</h4>"))
+display(by_education.drop(columns="variable").style.format(fmt))
+display(Image(filename=str(FIGURES_DIR / "errores_por_educacion_2026.png")))
+display(HTML("<h4>Por dominio</h4>"))
+display(by_domain.drop(columns="variable").style.format(fmt))
+display(Image(filename=str(FIGURES_DIR / "errores_por_dominio_2026.png")))
+"""
+        ),
+        code(
+            """
+display(Markdown(
+    "### Interpretación por nivel educativo\\n\\n" + group_findings(by_education, "nivel educativo") + "\\n\\n"
+    + salary_scale_sentence(by_education, "nivel educativo") + " Un error medio positivo significa que, en promedio, "
+    "el modelo predijo menos de lo observado para ese grupo.\\n\\n"
+    "### Interpretación por dominio\\n\\n" + group_findings(by_domain, "dominio") + "\\n\\n"
+    + salary_scale_sentence(by_domain, "dominio")
+))"""
+        ),
+        md(
+            """
+### 8.2 Errores según el percentil del salario
+
+Se divide el test en bandas del **salario real** de 2026T1 (P0–P25, P25–P50, P50–P75, P75–P90, P90–P95 y P95–P100; los cortes salen del test completo con `approxQuantile`). Como muchos salarios se repiten en cifras redondas, las bandas se cierran por la derecha y la tabla informa su tamaño real.
+
+**Advertencia de lectura:** agrupar por el salario real induce, incluso en un modelo razonable, una sobreestimación en las bandas bajas y una subestimación en las altas (regresión a la media). Por eso el hallazgo importa sobre todo por su **magnitud** y por compararlo entre algoritmos.
+"""
+        ),
+        code(
+            """
+banded, thresholds = salary_percentile_bands(predictions_2026)
+by_band = error_by_salary_band(banded, thresholds)
+by_band.to_csv(TABLES_DIR / "errores_por_percentil_salarial_2026.csv", index=False)
+plot_errors_by_salary_band(by_band)
+
+display(HTML("<h4>Cortes de percentil del salario real (Q)</h4>"))
+display(thresholds.style.format({"salario_limite_superior": "{:,.2f}"}, na_rep="—"))
+display(HTML("<h4>Error por banda y modelo</h4>"))
+display(by_band.style.format({
+    "n": "{:,}", "salario_promedio": "{:,.2f}", "prediccion_promedio": "{:,.2f}", "MAE": "{:,.2f}",
+    "error_medio": "{:,.2f}", "prop_subestimado": "{:.1%}", "salario_limite_superior": "{:,.2f}",
+    "error_medio_pct_salario": "{:+.1f}%",
+}, na_rep="—"))
+display(Image(filename=str(FIGURES_DIR / "errores_por_percentil_salarial_2026.png")))
+"""
+        ),
+        code(
+            """
+display(Markdown(
+    "### Interpretación por percentil salarial\\n\\n" + band_findings(by_band) + "\\n\\n"
+    "**Salarios bajos, medios y altos.** " + band_context(test_metrics, by_band)
+))"""
+        ),
+        md("### 8.3 Respuestas a las preguntas de la actividad"),
+        code(
+            """
+display(Markdown(question_answers(test_metrics, by_education, by_domain, by_band)))
+"""
+        ),
+        md("## Conclusiones finales"),
+        code(
+            """
+display(Markdown(final_discussion(test_metrics, by_education, by_domain, by_band)))
+"""
+        ),
+        md(
+            """
+### Estado de las actividades
+
+| Actividad | Estado |
+|---|---|
+| 1. Carga, armonización y calidad | Completa |
+| 2. Estadística descriptiva | Completa |
+| 3. Correlaciones con MLlib | Completa |
+| 4. Segmentación KMeans | Completa |
+| 5. Pipeline de regresión lineal | Completa |
+| 6. Pipeline de Random Forest | Completa |
+| 7. Entrenamiento final y evaluación en 2026 | Completa |
+| 8. Visualización y análisis de errores | Completa |
+"""
+        ),
+        code(
+            """
+progress = pd.DataFrame({
+    "actividad": [
+        "1. Carga, armonizacion y calidad", "2. Estadistica descriptiva", "3. Correlaciones",
+        "4. KMeans", "5. Regresion lineal", "6. Random Forest",
+        "7. Evaluacion final 2026", "8. Analisis de errores",
+    ],
+    "estado": ["Completo"] * 8,
+})
+progress.to_csv(TABLES_DIR / "estado_avance.csv", index=False)
+
 # Liberación explícita de caché al terminar la ejecución reproducible.
-for frame in [raw_2025, raw_2026, harmonized_2025, harmonized_2026, prepared_2025, prepared_2026, train, validation, full_train_2025, test_2026]:
+for frame in [raw_2025, raw_2026, harmonized_2025, harmonized_2026, prepared_2025, prepared_2026,
+              train, validation, full_train_2025, test_2026, predictions_2026]:
     frame.unpersist()
-print("Notebook ejecutado correctamente. Spark queda disponible para inspección interactiva.")
+print("Notebook ejecutado correctamente de principio a fin. Spark queda disponible para inspección interactiva.")
 """
         ),
     ]
