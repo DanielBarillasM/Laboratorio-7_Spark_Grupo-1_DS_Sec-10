@@ -8,7 +8,7 @@
 
 [![Python](https://img.shields.io/badge/Python-3.11-3776AB?logo=python&logoColor=white)](https://www.python.org/)
 [![Apache Spark](https://img.shields.io/badge/Apache%20Spark-3.5.1-E25A1C?logo=apachespark&logoColor=white)](https://spark.apache.org/)
-[![Estado](https://img.shields.io/badge/actividades-7%2F8-2563EB)](#estado-del-avance)
+[![Estado](https://img.shields.io/badge/actividades-8%2F8-2563EB)](#estado-del-laboratorio)
 
 </div>
 
@@ -16,7 +16,7 @@
 
 Este repositorio contiene un flujo reproducible en PySpark para armonizar las bases de Personas de la ENEIC, describir la población asalariada elegible, identificar perfiles mediante KMeans y comparar modelos de regresión lineal y Random Forest para estimar el salario mensual.
 
-El avance mantiene 2026T1 completamente reservado como prueba final. Los resultados son no ponderados y describen los registros analizados; no son estimaciones oficiales de la población guatemalteca ni implican relaciones causales.
+2026T1 se usa únicamente como prueba final: nunca interviene en la selección de configuraciones. Los resultados son no ponderados y describen los registros analizados; no son estimaciones oficiales de la población guatemalteca ni implican relaciones causales.
 
 ## Integrantes
 
@@ -26,7 +26,9 @@ El avance mantiene 2026T1 completamente reservado como prueba final. Los resulta
 | Pablo Daniel Barillas Moreno | 22193 |
 | Roberto Emiliano Otoniel | 23968 |
 
-## Estado del avance
+## Estado del laboratorio
+
+**Progreso: 100 %.**
 
 | Actividad de la guía | Estado |
 |---|---|
@@ -37,28 +39,31 @@ El avance mantiene 2026T1 completamente reservado como prueba final. Los resulta
 | 5. Pipeline de regresión lineal | Completa |
 | 6. Pipeline de Random Forest | Completa |
 | 7. Reentrenamiento 2025 y prueba 2026 | Completa |
-| 8. Visualización y análisis de errores | Pendiente para la entrega final |
+| 8. Visualización y análisis de errores | Completa |
 
-Las actividades 1–7 están ejecutadas. La actividad 8 parte de las predicciones de 2026 guardadas en `working_dir/eneic/parquet/predicciones_test_2026` (una fila por registro de prueba con la predicción y el residuo de ambos modelos).
+La actividad 8 parte de las predicciones de 2026 guardadas en `working_dir/eneic/parquet/predicciones_test_2026` (una fila por registro de prueba con la predicción y el residuo de ambos modelos). Define el residuo como `salario real − salario predicho` (positivo = subestimación, negativo = sobreestimación), grafica una misma muestra reproducible de 5,000 registros y calcula todas las tablas por grupo con los registros completos de prueba.
+
+Resultados versionados de la actividad 8 en `outputs/tables/`: `errores_por_educacion_2026.csv`, `errores_por_dominio_2026.csv`, `errores_por_percentil_salarial_2026.csv` y `resumen_residuos_2026.csv`; y en `outputs/figures/`: `real_vs_predicho_2026.png`, `residuos_vs_predicho_2026.png`, `errores_por_educacion_2026.png`, `errores_por_dominio_2026.png` y `errores_por_percentil_salarial_2026.png`.
 
 ## Estructura
 
 ```text
 Lab-7/
 ├── notebooks/
-│   └── Laboratorio_7_Spark_MLlib_Avance.ipynb
+│   └── Laboratorio_7_Spark_MLlib_Final.ipynb
 ├── src/lab7/
 │   ├── config.py
 │   ├── data.py
 │   ├── analysis.py
+│   ├── interpretation.py
 │   ├── modeling.py
 │   └── visualization.py
 ├── outputs/
 │   ├── figures/
 │   └── tables/
 ├── reports/
-│   ├── informe_avance.tex
-│   └── informe_avance.pdf
+│   ├── informe_final.tex
+│   └── informe_final.pdf
 ├── ficha_repositorio/
 │   ├── Ficha_Repositorio_Laboratorio_7.tex
 │   └── Ficha_Repositorio_Laboratorio_7.pdf
@@ -98,9 +103,24 @@ Abrir `http://localhost:8888`, ingresar a `notebooks/Lab-7/notebooks/` y ejecuta
 ```bash
 docker exec pyspark311-jdk17 bash -lc \
   "cd /opt/app/notebooks/Lab-7 && jupyter nbconvert \
-  --to notebook --execute notebooks/Laboratorio_7_Spark_MLlib_Avance.ipynb \
-  --output Laboratorio_7_Spark_MLlib_Avance.ipynb \
+  --to notebook --execute notebooks/Laboratorio_7_Spark_MLlib_Final.ipynb \
+  --output Laboratorio_7_Spark_MLlib_Final.ipynb \
   --output-dir notebooks --ExecutePreprocessor.timeout=3600"
+```
+
+Después de ejecutar el notebook completo se generan el informe y su PDF:
+
+```bash
+python scripts/build_report.py
+cd reports && pdflatex informe_final.tex && pdflatex informe_final.tex
+```
+
+`build_report.py` lee los CSV de `outputs/tables/` y redacta cifras e interpretación desde ellos; falla con un mensaje claro si el notebook aún no se ha ejecutado.
+
+Las pruebas se ejecutan con:
+
+```bash
+pytest -q
 ```
 
 La primera ejecución convierte cada Excel por separado y guarda columnas seleccionadas en Parquet. Ejecuciones posteriores reutilizan esos archivos.
