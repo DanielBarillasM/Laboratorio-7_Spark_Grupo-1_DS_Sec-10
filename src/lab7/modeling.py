@@ -291,12 +291,3 @@ def final_comparison_table(
     table["cambio_RMSE_validacion_a_test"] = table["RMSE"] - table["RMSE_validacion"]
     return table.sort_values("RMSE").reset_index(drop=True)
 
-
-def final_stage_plan() -> tuple[str, ...]:
-    """Remaining work after the 2026 evaluation (activity 8)."""
-    return (
-        "Graficar salario real vs. predicho y residuos vs. predicho con una muestra comun de 5,000.",
-        "Calcular MAE y error medio por nivel educativo y dominio con todo el test 2026.",
-        "Analizar percentiles salariales y la tendencia a sub/sobreestimar salarios altos.",
-        "Redactar la discusion final y las limitaciones del estudio.",
-    )
